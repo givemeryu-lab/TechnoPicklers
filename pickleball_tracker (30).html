@@ -1,0 +1,1324 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피클볼 전적 관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --win: #00E5A0; --lose: #FF4D6D; --bg: #0A0A0F;
+    --surface: #13131A; --surface2: #1C1C26;
+    --border: rgba(255,255,255,0.07); --text: #F0F0F8;
+    --muted: #6B6B80; --accent: #7B6EFA;
+    --team-a: #7B6EFA; --team-b: #FA8E6E;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; min-height: 100dvh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(123,110,250,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(123,110,250,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+
+  /* ===== LOADING ===== */
+  #loading-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; transition: opacity 0.4s; }
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--surface2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--muted); letter-spacing: 1px; }
+
+  /* ===== PAGE LAYOUT ===== */
+  .page-wrap { position: relative; z-index: 1; max-width: 520px; margin: 0 auto; padding: 1rem 1rem calc(1.5rem + var(--safe-bottom)); }
+
+  /* ===== HEADER ===== */
+  .site-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; padding: 0 0.25rem; }
+  .logo { display: flex; align-items: center; gap: 8px; }
+  .logo-icon { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), #B06EFA); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: var(--text); line-height: 1; }
+  .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .season-tag { font-size: 11px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--win); animation: pulse 2s infinite; flex-shrink:0; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .btn-manage { height: 32px; padding: 0 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .btn-manage:active { opacity: 0.7; }
+
+  /* ===== STATS SECTION ===== */
+  .stats-section { margin-bottom: 1rem; }
+
+  /* 선수 탭 - wrap 그리드 (모든 선수 표시) */
+  .player-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .ptab { height: 32px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .ptab.on { background: rgba(123,110,250,0.2); border-color: var(--accent); color: var(--text); }
+  .ptab.all-tab.on { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); }
+
+  /* 통계 카드 - 2x2 그리드 */
+  .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.875rem; text-align: center; position: relative; overflow: hidden; }
+  .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.3s; transform-origin: left; }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; }
+  .stat-num.win-c { color: var(--win); }
+  .stat-num.lose-c { color: var(--lose); }
+  .stat-num.rate-c { color: var(--accent); }
+  .stat-num.total-c { color: var(--text); }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .player-rate-bar { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .player-rate-fill { height: 100%; border-radius: 2px; transition: width 0.5s; background: var(--win); }
+
+  /* 비율 바 */
+  .ratio-bar-wrap { margin-top: 8px; }
+  .ratio-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; display: flex; }
+  .ratio-win { background: var(--win); height: 100%; transition: width 0.5s; }
+  .ratio-lose { background: var(--lose); height: 100%; transition: width 0.5s; }
+  .ratio-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ===== ADD CARD ===== */
+  .add-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; margin-bottom: 1rem; }
+  .add-card-title { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+
+  /* 팀 입력 레이아웃 - 모바일 최적화 */
+  .teams-row { display: grid; grid-template-columns: 1fr 28px 1fr; gap: 6px; align-items: start; margin-bottom: 12px; }
+  .team-block { display: flex; flex-direction: column; gap: 8px; }
+  .vs-center { display: flex; align-items: center; justify-content: center; padding-top: 28px; height: 100%; }
+  .vs-text { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--muted); letter-spacing: 1px; }
+  .team-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 1px; white-space: nowrap; }
+  .team-label-a { background: rgba(123,110,250,0.15); color: var(--team-a); }
+  .team-label-b { background: rgba(250,142,110,0.15); color: var(--team-b); }
+  .inp { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; height: 40px; padding: 0 10px; outline: none; transition: border-color 0.2s; width: 100%; }
+  .inp:focus { border-color: var(--accent); }
+  .inp::placeholder { color: var(--muted); }
+
+  /* Player slot */
+  .player-slot { position: relative; }
+  .slot-display { height: 38px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15); background: var(--surface2); display: flex; align-items: center; padding: 0 8px; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; gap: 4px; }
+  .slot-display.filled-a { border-style: solid; border-color: var(--team-a); background: rgba(123,110,250,0.1); color: var(--text); }
+  .slot-display.filled-b { border-style: solid; border-color: var(--team-b); background: rgba(250,142,110,0.1); color: var(--text); }
+  .slot-name { flex: 1; font-weight: 500; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slot-x { font-size: 12px; color: var(--muted); padding: 2px 4px; border-radius: 4px; flex-shrink: 0; }
+
+  /* Player picker - bottom sheet style on mobile */
+  .player-picker { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: #1A1A28; border-top: 1px solid rgba(255,255,255,0.12); border-radius: 18px 18px 0 0; padding: 12px; display: none; box-shadow: 0 -12px 40px rgba(0,0,0,0.6); max-height: 65vh; overflow-y: auto; }
+  .player-picker.open { display: flex; flex-direction: column; gap: 8px; }
+  .picker-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 0 auto 4px; }
+  .picker-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; height: 40px; padding: 0 12px; outline: none; }
+  .picker-search:focus { border-color: var(--accent); }
+  .picker-search::placeholder { color: var(--muted); }
+  .picker-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .ppbtn { height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; padding: 0; }
+  .ppbtn:active:not(.used) { background: rgba(123,110,250,0.25); border-color: var(--accent); }
+  .ppbtn.used { opacity: 0.22; }
+  .ppbtn.sel-a { background: rgba(123,110,250,0.2); border-color: var(--team-a); color: var(--team-a); }
+  .ppbtn.sel-b { background: rgba(250,142,110,0.2); border-color: var(--team-b); color: var(--team-b); }
+  .picker-divider { height: 1px; background: var(--border); margin: 2px 0; }
+  .picker-custom-row { display: flex; gap: 6px; padding-bottom: calc(var(--safe-bottom)); }
+  .picker-custom-inp { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; height: 42px; padding: 0 12px; outline: none; }
+  .picker-custom-inp:focus { border-color: var(--accent); }
+  .picker-custom-inp::placeholder { color: var(--muted); }
+  .picker-custom-btn { height: 42px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--accent); background: rgba(123,110,250,0.15); color: var(--accent); font-size: 14px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; white-space: nowrap; font-weight: 600; }
+  .picker-backdrop { position: fixed; inset: 0; z-index: 199; background: rgba(0,0,0,0.5); display: none; }
+  .picker-backdrop.open { display: block; }
+  #picker-backdrop2 { z-index: 199; }
+
+  /* Score picker - bottom sheet */
+  .score-slot { position: relative; }
+  .score-slot-display { width: 52px; height: 38px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); background: var(--surface2); display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--muted); cursor: pointer; user-select: none; }
+  .score-slot-display.filled { border-style: solid; border-color: var(--accent); color: var(--text); background: rgba(123,110,250,0.1); }
+  .score-picker { position: fixed; bottom: 0; left: 0; right: 0; z-index: 202; background: #1A1A28; border-top: 1px solid rgba(255,255,255,0.12); border-radius: 18px 18px 0 0; padding: 12px; display: none; box-shadow: 0 -12px 40px rgba(0,0,0,0.6); }
+  .score-picker.open { display: flex; flex-direction: column; gap: 8px; }
+  .score-picker-title { font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+  .score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .scbtn { height: 44px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 18px; cursor: pointer; }
+  .scbtn:active { background: rgba(123,110,250,0.2); }
+  .scbtn.picked { background: rgba(123,110,250,0.25); border-color: var(--accent); color: var(--accent); }
+  .scbtn.clear-btn { grid-column: span 5; height: 38px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; color: var(--muted); border-color: transparent; background: transparent; margin-bottom: calc(var(--safe-bottom)); }
+  .score-sep { font-size: 16px; color: var(--muted); }
+  .score-picker-sheet { position: fixed; bottom: 0; left: 0; right: 0; z-index: 202; background: #1A1A28; border-top: 1px solid rgba(255,255,255,0.12); border-radius: 18px 18px 0 0; padding: 8px 12px 16px; display: none; box-shadow: 0 -12px 40px rgba(0,0,0,0.6); }
+  .score-picker-sheet.open { display: flex; flex-direction: column; gap: 10px; }
+  .score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .scbtn { height: 44px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 18px; cursor: pointer; }
+  .scbtn:active { background: rgba(123,110,250,0.2); }
+  .scbtn.picked { background: rgba(123,110,250,0.25); border-color: var(--accent); color: var(--accent); }
+  .score-direct-row { display: flex; gap: 8px; }
+  .score-direct-inp { flex: 1; height: 42px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 22px; text-align: center; outline: none; padding: 0 10px; }
+  .score-direct-inp:focus { border-color: var(--accent); }
+  .score-direct-inp::placeholder { color: var(--muted); font-family: 'Noto Sans KR',sans-serif; font-size: 13px; }
+  .score-clear-btn { height: 38px; background: transparent; border: none; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; cursor: pointer; }
+  .score-clear-btn:active { color: var(--lose); }
+
+  /* 승리 팀 선택 */
+  .bottom-row { display: flex; gap: 8px; align-items: center; }
+  .result-toggle { display: flex; gap: 6px; flex: 1; }
+  .rtbtn { flex: 1; height: 42px; border-radius: 10px; border: 1px solid var(--border); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; background: var(--surface2); color: var(--muted); }
+  .rtbtn.sel-win { background: rgba(0,229,160,0.15); border-color: var(--win); color: var(--win); }
+  .rtbtn.sel-lose { background: rgba(255,77,109,0.15); border-color: var(--lose); color: var(--lose); }
+  .btn-add { height: 42px; padding: 0 18px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), #B06EFA); border: none; color: #fff; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .btn-add:active { opacity: 0.85; transform: scale(0.97); }
+  .btn-add:disabled { opacity: 0.5; }
+
+  /* ===== RECORDS ===== */
+  .records-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .records-head { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); }
+  .records-title { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .filter-wrap { display: flex; gap: 5px; }
+  .ftab { height: 26px; padding: 0 10px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 11px; cursor: pointer; }
+  .ftab.on { background: var(--surface2); border-color: rgba(255,255,255,0.15); color: var(--text); }
+
+  /* 기록 아이템 - 모바일 카드형 */
+  .record-item { display: flex; flex-direction: column; gap: 6px; padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); animation: slideIn 0.2s ease; }
+  .record-item:last-child { border-bottom: none; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .rec-top { display: flex; align-items: center; gap: 8px; }
+  .badge { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .badge-win { background: rgba(0,229,160,0.12); color: var(--win); border: 1px solid rgba(0,229,160,0.3); }
+  .badge-lose { background: rgba(255,77,109,0.12); color: var(--lose); border: 1px solid rgba(255,77,109,0.3); }
+  .rec-meta { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .rec-team-line { display: flex; align-items: center; gap: 6px; }
+  .rec-team-line.team-won { color: var(--win); font-weight: 600; }
+  .rec-team-line.team-lost { color: var(--muted); }
+  .rec-team-score { font-family: 'Bebas Neue', sans-serif; font-size: 16px; min-width: 18px; text-align: right; flex-shrink: 0; }
+  .rec-team-label-win { background: rgba(0,229,160,0.15); color: var(--win); font-size: 9px; font-weight: 700; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 8px; }
+  .rec-teams-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .rec-team { display: flex; align-items: center; gap: 4px; }
+  .rec-team-label { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 8px; }
+  .rec-team-label-a { background: rgba(123,110,250,0.15); color: var(--team-a); }
+  .rec-team-label-b { background: rgba(250,142,110,0.15); color: var(--team-b); }
+  .rec-players { font-size: 13px; font-weight: 500; }
+  .rec-vs { font-size: 10px; color: var(--muted); }
+  .rec-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .rec-score { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; color: var(--text); min-width: 48px; text-align: center; }
+  .rec-date { font-size: 10px; color: var(--muted); }
+  .rec-actions { display: flex; flex-direction: column; gap: 4px; }
+  .btn-edit, .btn-del { background: none; border: 1px solid var(--border); color: var(--muted); cursor: pointer; font-size: 13px; padding: 5px 8px; border-radius: 6px; line-height: 1; }
+  .btn-edit:active { color: var(--accent); background: rgba(123,110,250,0.1); }
+  .btn-del:active { color: var(--lose); background: rgba(255,77,109,0.1); }
+
+  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 14px; line-height: 1.8; }
+  .empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.3; }
+  .streak-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+  .streak-win { background: rgba(0,229,160,0.12); color: var(--win); }
+  .streak-lose { background: rgba(255,77,109,0.12); color: var(--lose); }
+
+  /* ===== 경기 수정 모달 (bottom sheet) ===== */
+  .edit-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; display: flex; align-items: flex-end; }
+  .edit-modal-overlay.open { opacity: 1; pointer-events: all; }
+  .edit-modal { width: 100%; background: #16161F; border-top: 1px solid rgba(255,255,255,0.1); border-radius: 20px 20px 0 0; overflow-y: auto; max-height: 92vh; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); box-shadow: 0 -16px 48px rgba(0,0,0,0.7); }
+  .edit-modal-overlay.open .edit-modal { transform: translateY(0); }
+  .edit-modal-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 12px auto 0; }
+  .edit-modal-body { padding: 1rem; display: flex; flex-direction: column; gap: 12px; }
+  .edit-teams-grid { display: grid; grid-template-columns: 1fr 52px 1fr; gap: 8px; align-items: start; }
+  .edit-team-col { display: flex; flex-direction: column; gap: 7px; }
+  .edit-team-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+  .edit-team-lbl-a { background: rgba(123,110,250,0.15); color: var(--team-a); }
+  .edit-team-lbl-b { background: rgba(250,142,110,0.15); color: var(--team-b); }
+  .edit-vs-col { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding-top: 22px; }
+  .edit-vs-txt { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--muted); }
+  .edit-score-inp { width: 46px; height: 38px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 20px; text-align: center; outline: none; }
+  .edit-score-inp:focus { border-color: var(--accent); }
+  .edit-score-lbl { font-size: 9px; color: var(--muted); text-align: center; }
+  .edit-slot { position: relative; }
+  .edit-slot-display { height: 36px; border-radius: 7px; border: 1px dashed rgba(255,255,255,0.15); background: var(--surface2); display: flex; align-items: center; padding: 0 8px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; gap: 4px; }
+  .edit-slot-display.filled-a { border-style: solid; border-color: var(--team-a); background: rgba(123,110,250,0.1); color: var(--text); }
+  .edit-slot-display.filled-b { border-style: solid; border-color: var(--team-b); background: rgba(250,142,110,0.1); color: var(--text); }
+  .edit-slot-name { flex: 1; font-weight: 500; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .edit-slot-x { font-size: 11px; color: var(--muted); padding: 1px 4px; border-radius: 3px; flex-shrink: 0; }
+  .edit-picker { position: fixed; bottom: 0; left: 0; right: 0; z-index: 600; background: #1A1A28; border-top: 1px solid rgba(255,255,255,0.12); border-radius: 18px 18px 0 0; padding: 12px; display: none; box-shadow: 0 -12px 40px rgba(0,0,0,0.7); max-height: 70vh; overflow-y: auto; }
+  .edit-picker.open { display: flex; flex-direction: column; gap: 8px; }
+  .edit-ppbtn { height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; padding: 0; }
+  .edit-ppbtn:active:not(.used) { background: rgba(123,110,250,0.25); border-color: var(--accent); }
+  .edit-ppbtn.used { opacity: 0.22; }
+  .edit-ppbtn.esel-a { background: rgba(123,110,250,0.2); border-color: var(--team-a); color: var(--team-a); }
+  .edit-ppbtn.esel-b { background: rgba(250,142,110,0.2); border-color: var(--team-b); color: var(--team-b); }
+  .edit-winner-row { display: flex; gap: 8px; }
+  .edit-winner-btn { flex: 1; height: 42px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .edit-winner-btn.sel-a { background: rgba(0,229,160,0.15); border-color: var(--win); color: var(--win); }
+  .edit-winner-btn.sel-b { background: rgba(255,77,109,0.15); border-color: var(--lose); color: var(--lose); }
+  .edit-section-lbl { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* ===== 선수 관리 모달 (bottom sheet) ===== */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { position: fixed; bottom: 0; left: 0; right: 0; z-index: 301; background: #16161F; border-top: 1px solid rgba(255,255,255,0.1); border-radius: 20px 20px 0 0; max-height: 85vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); box-shadow: 0 -16px 48px rgba(0,0,0,0.7); }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 12px auto 0; flex-shrink: 0; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1rem 0.75rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .modal-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .modal-close { width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .modal-body { padding: 0.875rem 1rem; overflow-y: auto; flex: 1; }
+  .player-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 1rem; }
+  .player-row { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .player-row-num { font-size: 11px; color: var(--muted); width: 18px; text-align: center; flex-shrink: 0; }
+  .player-row-inp { flex: 1; background: transparent; border: none; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 500; outline: none; padding: 0; }
+  .player-row-inp::placeholder { color: var(--muted); }
+  .player-row-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 6px; border-radius: 5px; }
+  .add-player-row { display: flex; gap: 8px; padding-bottom: calc(0.5rem + var(--safe-bottom)); }
+  .inp-add-player { flex: 1; }
+  .btn-add-player { height: 42px; padding: 0 16px; border-radius: 8px; background: rgba(123,110,250,0.15); border: 1px solid var(--team-a); color: var(--team-a); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 0.875rem 1rem calc(0.875rem + var(--safe-bottom)); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .btn-cancel { height: 42px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; cursor: pointer; }
+  .btn-save { height: 42px; padding: 0 22px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), #B06EFA); border: none; color: #fff; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">데이터 불러오는 중...</div>
+</div>
+
+<!-- 경기 수정 바텀시트 -->
+<div id="edit-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;" onclick="closeEditModal()"></div>
+<div id="edit-sheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:301;background:#16161F;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,0.1);max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform 0.3s cubic-bezier(.4,0,.2,1);">
+  <div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:12px auto 0;"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1rem 0.5rem;">
+    <div style="font-size:15px;font-weight:600;color:var(--text);">✏️ 경기 수정</div>
+    <button onclick="closeEditModal()" style="width:30px;height:30px;border-radius:50%;border:none;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:14px;">✕</button>
+  </div>
+  <div style="padding:0.75rem 1rem;display:flex;flex-direction:column;gap:14px;">
+
+    <!-- 팀 A -->
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--team-a);margin-bottom:6px;">팀 A</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div id="ea1-display" onclick="editOpenPlayerSheet('a1')" style="height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.2);background:var(--surface2);display:flex;align-items:center;padding:0 12px;font-size:14px;color:var(--muted);cursor:pointer;">선수 선택 ▾</div>
+        <div id="ea2-display" onclick="editOpenPlayerSheet('a2')" style="height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.2);background:var(--surface2);display:flex;align-items:center;padding:0 12px;font-size:14px;color:var(--muted);cursor:pointer;">선수 선택 ▾</div>
+      </div>
+    </div>
+
+    <!-- 스코어 -->
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">스코어</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="esa-display" onclick="editOpenScoreSheet('a')" style="flex:1;height:44px;border-radius:8px;border:1px dashed rgba(255,255,255,0.2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--muted);cursor:pointer;">-</div>
+        <span style="font-size:18px;color:var(--muted);">:</span>
+        <div id="esb-display" onclick="editOpenScoreSheet('b')" style="flex:1;height:44px;border-radius:8px;border:1px dashed rgba(255,255,255,0.2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--muted);cursor:pointer;">-</div>
+      </div>
+    </div>
+
+    <!-- 팀 B -->
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--team-b);margin-bottom:6px;">팀 B</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div id="eb1-display" onclick="editOpenPlayerSheet('b1')" style="height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.2);background:var(--surface2);display:flex;align-items:center;padding:0 12px;font-size:14px;color:var(--muted);cursor:pointer;">선수 선택 ▾</div>
+        <div id="eb2-display" onclick="editOpenPlayerSheet('b2')" style="height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.2);background:var(--surface2);display:flex;align-items:center;padding:0 12px;font-size:14px;color:var(--muted);cursor:pointer;">선수 선택 ▾</div>
+      </div>
+    </div>
+
+    <!-- 날짜/시간 변경 -->
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">날짜 / 시간</div>
+      <input id="edit-date-inp" type="text" maxlength="20" placeholder="예: 5/12 14:30"
+        style="width:100%;height:40px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;padding:0 12px;outline:none;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+    </div>
+    <!-- 저장 -->
+    <div style="display:flex;gap:8px;padding-bottom:1rem;">
+      <button onclick="closeEditModal()" style="flex:1;height:44px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:14px;cursor:pointer;">취소</button>
+      <button onclick="saveEdit()" style="flex:2;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#B06EFA);border:none;color:#fff;font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 수정용 선수 선택 시트 -->
+<div id="edit-player-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;" onclick="editClosePlayerSheet()"></div>
+<div id="edit-player-sheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:401;background:#1A1A28;border-radius:18px 18px 0 0;border-top:1px solid rgba(255,255,255,0.12);padding:12px;max-height:70vh;overflow-y:auto;transform:translateY(100%);transition:transform 0.25s;">
+  <div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 10px;"></div>
+  <div id="edit-player-sheet-title" style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-bottom:10px;"></div>
+  <div id="edit-player-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;"></div>
+  <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+  <div style="display:flex;gap:8px;">
+    <input id="edit-player-custom-inp" type="text" maxlength="20" placeholder="직접 입력" onclick="event.stopPropagation()"
+      style="flex:1;height:42px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;padding:0 12px;outline:none;"
+      onkeydown="if(event.key==='Enter')editConfirmCustomPlayer()" />
+    <button onclick="editConfirmCustomPlayer()" style="height:42px;padding:0 16px;border-radius:8px;border:1px solid var(--accent);background:rgba(123,110,250,0.15);color:var(--accent);font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">확인</button>
+  </div>
+</div>
+
+<!-- 수정용 점수 선택 시트 -->
+<div id="edit-score-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;" onclick="editCloseScoreSheet()"></div>
+<div id="edit-score-sheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:401;background:#1A1A28;border-radius:18px 18px 0 0;border-top:1px solid rgba(255,255,255,0.12);padding:12px;transform:translateY(100%);transition:transform 0.25s;">
+  <div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 10px;"></div>
+  <div id="edit-score-sheet-title" style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-bottom:10px;"></div>
+  <div id="edit-score-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px;"></div>
+  <div style="display:flex;gap:8px;margin-bottom:6px;">
+    <input id="edit-score-custom-inp" type="number" min="0" max="99" placeholder="직접 입력" onclick="event.stopPropagation()"
+      style="flex:1;height:42px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:22px;text-align:center;padding:0 10px;outline:none;"
+      onkeydown="if(event.key==='Enter')editConfirmCustomScore()" />
+    <button onclick="editConfirmCustomScore()" style="height:42px;padding:0 16px;border-radius:8px;border:1px solid var(--accent);background:rgba(123,110,250,0.15);color:var(--accent);font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">확인</button>
+  </div>
+  <button onclick="editClearScore()" style="width:100%;height:36px;background:transparent;border:none;color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;">지우기</button>
+</div>
+
+<!-- 선수 관리 모달 -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">👥 선수 목록 관리</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="player-list" id="modal-player-list"></div>
+      <div class="add-player-row">
+        <input class="inp inp-add-player" id="inp-new-player" type="text" placeholder="새 선수 이름 입력" maxlength="20" />
+        <button class="btn-add-player" onclick="addPlayerInModal()">+ 추가</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-save" onclick="savePlayers()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="page-wrap">
+  <header class="site-header">
+    <div class="logo">
+      <div class="logo-icon">🏓</div>
+      <div>
+        <div class="logo-text">PICKLEBALL</div>
+        <div class="logo-sub">복식 전적</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="sync-dot"></div>
+      <div id="season-tag" class="season-tag">--:--</div>
+      <button class="btn-manage" onclick="openModal()">👥 선수</button>
+    </div>
+  </header>
+
+  <!-- 경기 추가 -->
+  <div class="add-card">
+    <div class="add-card-title">+ 경기 추가</div>
+    <div class="teams-row">
+      <div class="team-block">
+        <span class="team-label team-label-a">팀 A</span>
+        <div class="player-slot" id="slot-a1-wrap">
+          <div class="slot-display" id="slot-a1" onclick="togglePicker('a1')">
+            <span class="slot-name" id="slot-a1-name">선수 선택 ▾</span>
+          </div>
+        </div>
+        <div class="player-slot" id="slot-a2-wrap">
+          <div class="slot-display" id="slot-a2" onclick="togglePicker('a2')">
+            <span class="slot-name" id="slot-a2-name">선수 선택 ▾</span>
+          </div>
+        </div>
+        <div class="score-slot" onclick="openScorePicker('a')">
+          <div class="score-slot-display" id="sslot-a" style="width:100%">-</div>
+        </div>
+      </div>
+      <div class="vs-center">
+        <div class="vs-text">VS</div>
+      </div>
+      <div class="team-block">
+        <span class="team-label team-label-b">팀 B</span>
+        <div class="player-slot" id="slot-b1-wrap">
+          <div class="slot-display" id="slot-b1" onclick="togglePicker('b1')">
+            <span class="slot-name" id="slot-b1-name">선수 선택 ▾</span>
+          </div>
+        </div>
+        <div class="player-slot" id="slot-b2-wrap">
+          <div class="slot-display" id="slot-b2" onclick="togglePicker('b2')">
+            <span class="slot-name" id="slot-b2-name">선수 선택 ▾</span>
+          </div>
+        </div>
+        <div class="score-slot" onclick="openScorePicker('b')">
+          <div class="score-slot-display" id="sslot-b" style="width:100%">-</div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-row">
+      <button class="btn-add" id="btn-submit" onclick="addGame()" style="width:100%">기록하기</button>
+    </div>
+  </div>
+
+  <!-- 통계 섹션 -->
+  <div class="stats-section">
+    <div class="stats-section-header" onclick="toggleStats()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;user-select:none;">
+      <span class="stats-section-title">📊 통계</span>
+      <span id="stats-toggle-icon" style="font-size:13px;color:var(--muted);transition:transform 0.2s;">▼</span>
+    </div>
+    <div id="stats-body" style="display:none;">
+    <!-- 선수 탭 -->
+    <div class="player-tabs" id="player-tabs"></div>
+    <!-- 통계 카드 row 1: 승패 -->
+    <div class="stats-bar">
+      <div class="stat-box">
+        <div class="stat-num total-c" id="s-total">0</div>
+        <div class="stat-lbl" id="s-total-lbl">전체 경기</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num win-c" id="s-wins">0</div>
+        <div class="stat-lbl" id="s-wins-lbl">승</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num lose-c" id="s-losses">0</div>
+        <div class="stat-lbl" id="s-losses-lbl">패</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num rate-c" id="s-rate">-%</div>
+        <div class="stat-lbl">승률</div>
+        <div class="player-rate-bar"><div class="player-rate-fill" id="s-rate-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <!-- 통계 카드 row 2: 득점/실점 -->
+    <div class="stats-bar score-stats-bar" id="score-stats-bar" style="margin-top:10px; display:none">
+      <div class="stat-box">
+        <div class="stat-num" id="s-scored" style="color:#F5C842">0</div>
+        <div class="stat-lbl">총 득점</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="s-conceded" style="color:#A0A0C0">0</div>
+        <div class="stat-lbl">총 실점</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="s-avg-scored" style="color:#F5C842">-</div>
+        <div class="stat-lbl">경기당 득점</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="s-avg-conceded" style="color:#A0A0C0">-</div>
+        <div class="stat-lbl">경기당 실점</div>
+      </div>
+    </div>
+    <!-- 득점 비율 바 -->
+    <div class="ratio-bar-wrap" id="score-ratio-wrap" style="display:none; margin-top:10px;">
+      <div class="ratio-bar">
+        <div class="ratio-win" id="score-ratio-scored" style="background:#F5C842; width:0%"></div>
+        <div class="ratio-lose" id="score-ratio-conceded" style="width:0%"></div>
+      </div>
+      <div class="ratio-labels">
+        <span id="score-ratio-left" style="color:#F5C842">득점 0%</span>
+        <span></span>
+        <span id="score-ratio-right" style="color:#A0A0C0">실점 0%</span>
+      </div>
+    </div>
+    <!-- 전체 승패 비율 바 (전체 탭일 때만) -->
+    <div class="ratio-bar-wrap" id="ratio-wrap" style="display:none; margin-top:10px;">
+      <div class="ratio-bar">
+        <div class="ratio-win" id="ratio-win" style="width:0%"></div>
+        <div class="ratio-lose" id="ratio-lose" style="width:0%"></div>
+      </div>
+      <div class="ratio-labels">
+        <span id="ratio-left">팀A 0%</span>
+        <span id="streak-info"></span>
+        <span id="ratio-right">팀B 0%</span>
+      </div>
+    </div>
+    </div><!-- /stats-body -->
+  </div>
+
+  <div class="records-card">
+    <div class="records-head">
+      <div class="records-title">경기 기록</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button onclick="exportRecords()" style="height:26px;padding:0 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;">📤 내보내기</button>
+        <div class="filter-wrap">
+          <button class="ftab on" onclick="setFilter('all',this)">전체</button>
+          <select id="filter-player-select" onchange="setPlayerFilter(this.value)"
+            style="height:26px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;padding:0 8px;cursor:pointer;outline:none;">
+            <option value="">선수 선택</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="records"></div>
+  </div>
+</div>
+
+<!-- 공유 점수 피커 (body 레벨) -->
+<div class="score-picker-sheet" id="shared-score-picker">
+  <div class="picker-handle"></div>
+  <div class="score-picker-title" id="score-picker-title">점수 선택</div>
+  <div class="score-grid" id="score-grid"></div>
+  <div class="score-direct-row">
+    <input class="score-direct-inp" id="score-direct-inp" type="number" min="0" max="99" placeholder="직접 입력" />
+    <button class="picker-custom-btn" onclick="confirmDirectScore()">확인</button>
+  </div>
+  <button class="score-clear-btn" onclick="clearActiveScore()">지우기</button>
+</div>
+
+<!-- 공유 선수 피커 (body 레벨) -->
+<div class="picker-backdrop" id="picker-backdrop2" onclick="closeAllPickers()"></div>
+<div class="player-picker" id="shared-player-picker">
+  <div class="picker-handle"></div>
+  <div class="picker-list" id="shared-picker-list"></div>
+  <div class="picker-divider"></div>
+  <div class="picker-custom-row">
+    <input class="picker-custom-inp" id="shared-custom-inp" placeholder="직접 입력" maxlength="20"
+      onkeydown="if(event.key==='Enter')selectCustomPlayer()" onclick="event.stopPropagation()" />
+    <button class="picker-custom-btn" onclick="selectCustomPlayer()">확인</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA4GAT7ZK1ZKHArzx7kFSUp1MoLFeSGcQ0",
+    authDomain: "dpad-dfc64.firebaseapp.com",
+    projectId: "dpad-dfc64",
+    storageBucket: "dpad-dfc64.firebasestorage.app",
+    messagingSenderId: "1041083998516",
+    appId: "1:1041083998516:web:41e0331509f91989eac561",
+    measurementId: "G-6SYHM4ZS91"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const gamesCol = collection(db, "games");
+  const settingsDoc = doc(db, "settings", "players");
+
+  let PLAYERS = ['a','b','c','d','e','f','g','h','i','j'];
+  let modalPlayers = [];
+  const selected = { a1: null, a2: null, b1: null, b2: null };
+  let picked = null;
+  let games = [];
+  let filter = 'all';
+  let statTab = 'all'; // 'all' or player name
+
+  // ---- Firebase: 선수 목록 ----
+  async function loadPlayers() {
+    try {
+      const snap = await getDoc(settingsDoc);
+      if (snap.exists() && snap.data().list) PLAYERS = snap.data().list;
+    } catch(e) {}
+    buildPickers();
+  buildScorePickers();
+  buildPlayerFilterSelect();
+    buildPlayerTabs();
+  }
+
+  async function savePlayersToFirebase(list) {
+    await setDoc(settingsDoc, { list });
+  }
+
+  // ---- 선수 탭 빌드 ----
+  function buildPlayerTabs() {
+    const wrap = document.getElementById('player-tabs');
+    // 전체 버튼 없음 - 첫 선수가 기본값
+    if (PLAYERS.length > 0 && statTab === 'all') statTab = PLAYERS[0];
+    const playerBtns = PLAYERS.map(p =>
+      `<button class="ptab ${statTab===p?'on':''}" onclick="setStatTab('${p}',this)">${p}</button>`
+    ).join('');
+    wrap.innerHTML = playerBtns;
+  }
+
+  window.setStatTab = function(tab, el) {
+    statTab = tab;
+    document.querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
+    el.classList.add('on');
+    renderStats();
+  };
+
+  // ---- 통계 렌더 ----
+  function renderStats() {
+    const now = new Date();
+    document.getElementById('season-tag').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월`;
+
+    if (statTab === 'all') {
+      // 전체 통계 (팀A vs 팀B)
+      const winsA = games.filter(g => g.winner === 'a').length;
+      const winsB = games.filter(g => g.winner === 'b').length;
+      const total = games.length;
+      document.getElementById('s-total').textContent = total;
+      document.getElementById('s-total-lbl').textContent = '전체 경기';
+      document.getElementById('s-wins').textContent = winsA;
+      document.getElementById('s-wins-lbl').textContent = '팀A 승';
+      document.getElementById('s-losses').textContent = winsB;
+      document.getElementById('s-losses-lbl').textContent = '팀B 승';
+      const rate = total ? Math.round(winsA / total * 100) : null;
+      document.getElementById('s-rate').textContent = rate !== null ? rate + '%' : '-%';
+      document.getElementById('s-rate-bar').style.width = (rate || 0) + '%';
+
+      // 전체 득점/실점 (팀A 기준)
+      const scoredGames = games.filter(g => g.scoreA !== null && g.scoreA !== undefined);
+      const totalScored = scoredGames.reduce((s,g) => s + (g.winner==='a' ? g.scoreA : g.scoreB), 0);
+      const totalConceded = scoredGames.reduce((s,g) => s + (g.winner==='a' ? g.scoreB : g.scoreA), 0);
+      renderScoreStats(totalScored, totalConceded, scoredGames.length, '팀A 득점', '팀A 실점');
+
+      // 승패 비율 바
+      const wrap = document.getElementById('ratio-wrap');
+      if (total > 0) {
+        wrap.style.display = 'block';
+        const ap = Math.round(winsA/total*100);
+        const bp = Math.round(winsB/total*100);
+        document.getElementById('ratio-win').style.width = ap + '%';
+        document.getElementById('ratio-lose').style.width = bp + '%';
+        document.getElementById('ratio-left').textContent = `팀A ${ap}%`;
+        document.getElementById('ratio-right').textContent = `팀B ${bp}%`;
+        const streak = getStreak();
+        if (streak && streak.count >= 2) {
+          const cls = streak.winner === 'a' ? 'streak-win' : 'streak-lose';
+          const label = streak.winner === 'a' ? '🔥 팀A 연승' : '🔥 팀B 연승';
+          document.getElementById('streak-info').innerHTML = `<span class="streak-badge ${cls}">${label} ${streak.count}</span>`;
+        } else { document.getElementById('streak-info').innerHTML = ''; }
+      } else { wrap.style.display = 'none'; }
+
+    } else {
+      // 특정 선수 통계
+      const p = statTab;
+      const playerGames = games.filter(g =>
+        (g.teamA || []).includes(p) || (g.teamB || []).includes(p)
+      );
+      const wins = playerGames.filter(g =>
+        (g.winner === 'a' && (g.teamA||[]).includes(p)) ||
+        (g.winner === 'b' && (g.teamB||[]).includes(p))
+      ).length;
+      const losses = playerGames.length - wins;
+      const rate = playerGames.length ? Math.round(wins / playerGames.length * 100) : null;
+
+      document.getElementById('s-total').textContent = playerGames.length;
+      document.getElementById('s-total-lbl').textContent = `${p} 출전`;
+      document.getElementById('s-wins').textContent = wins;
+      document.getElementById('s-wins-lbl').textContent = `${p} 승`;
+      document.getElementById('s-losses').textContent = losses;
+      document.getElementById('s-losses-lbl').textContent = `${p} 패`;
+      document.getElementById('s-rate').textContent = rate !== null ? rate + '%' : '-%';
+      document.getElementById('s-rate-bar').style.width = (rate || 0) + '%';
+
+      // 선수 득점/실점 (해당 선수가 속한 팀 기준)
+      const sg = playerGames.filter(g => g.scoreA !== null && g.scoreA !== undefined);
+      const pScored = sg.reduce((s,g) => {
+        const onA = (g.teamA||[]).includes(p);
+        return s + (onA ? g.scoreA : g.scoreB);
+      }, 0);
+      const pConceded = sg.reduce((s,g) => {
+        const onA = (g.teamA||[]).includes(p);
+        return s + (onA ? g.scoreB : g.scoreA);
+      }, 0);
+      renderScoreStats(pScored, pConceded, sg.length, `${p} 득점`, `${p} 실점`);
+
+      document.getElementById('ratio-wrap').style.display = 'none';
+    }
+  }
+
+  function renderScoreStats(scored, conceded, gamesWithScore, scoredLbl, concededLbl) {
+    const bar = document.getElementById('score-stats-bar');
+    const ratioWrap = document.getElementById('score-ratio-wrap');
+    if (gamesWithScore === 0) {
+      bar.style.display = 'none';
+      ratioWrap.style.display = 'none';
+      return;
+    }
+    bar.style.display = 'grid';
+    ratioWrap.style.display = 'block';
+    document.getElementById('s-scored').textContent = scored;
+    document.getElementById('s-conceded').textContent = conceded;
+    document.getElementById('s-avg-scored').textContent = (scored / gamesWithScore).toFixed(1);
+    document.getElementById('s-avg-conceded').textContent = (conceded / gamesWithScore).toFixed(1);
+    const total = scored + conceded;
+    const sp = total ? Math.round(scored / total * 100) : 0;
+    const cp = total ? Math.round(conceded / total * 100) : 0;
+    document.getElementById('score-ratio-scored').style.width = sp + '%';
+    document.getElementById('score-ratio-conceded').style.width = cp + '%';
+    document.getElementById('score-ratio-left').textContent = `${scoredLbl} ${sp}%`;
+    document.getElementById('score-ratio-right').textContent = `${concededLbl} ${cp}%`;
+  }
+
+  // ---- 선수 관리 모달 ----
+  window.openModal = function() {
+    modalPlayers = [...PLAYERS];
+    renderModalList();
+    document.getElementById('modal-overlay').classList.add('open');
+  };
+  window.closeModal = function() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  };
+  window.handleOverlayClick = function(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  };
+  function renderModalList() {
+    const list = document.getElementById('modal-player-list');
+    if (modalPlayers.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--muted);font-size:13px;">선수가 없습니다. 아래에서 추가하세요.</div>';
+      return;
+    }
+    list.innerHTML = modalPlayers.map((p, i) => `
+      <div class="player-row">
+        <span class="player-row-num">${i+1}</span>
+        <input class="player-row-inp" value="${p}" placeholder="선수 이름"
+          oninput="modalPlayers[${i}]=this.value" maxlength="20" />
+        <button class="player-row-del" onclick="removeModalPlayer(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+  window.removeModalPlayer = function(idx) {
+    modalPlayers.splice(idx, 1);
+    renderModalList();
+  };
+  window.addPlayerInModal = function() {
+    const inp = document.getElementById('inp-new-player');
+    const name = inp.value.trim();
+    if (!name) { inp.focus(); return; }
+    if (modalPlayers.includes(name)) { alert('이미 있는 선수입니다'); return; }
+    modalPlayers.push(name);
+    inp.value = '';
+    renderModalList();
+    setTimeout(() => { document.getElementById('modal-player-list').scrollTop = 99999; }, 50);
+  };
+  window.savePlayers = async function() {
+    const cleaned = modalPlayers.map(p => p.trim()).filter(p => p.length > 0);
+    if (cleaned.length === 0) { alert('선수가 최소 1명 이상 있어야 합니다'); return; }
+    try {
+      await savePlayersToFirebase(cleaned);
+      PLAYERS = cleaned;
+      if (!PLAYERS.includes(statTab)) statTab = PLAYERS[0] || 'all';
+      ['a1','a2','b1','b2'].forEach(s => {
+        if (selected[s] && !PLAYERS.includes(selected[s])) clearSlot({ stopPropagation:()=>{} }, s);
+      });
+      buildPickers();
+      buildPlayerTabs();
+      buildPlayerFilterSelect();
+      renderStats();
+      closeModal();
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  };
+  document.getElementById('inp-new-player').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.addPlayerInModal();
+  });
+
+  // ---- 선수 피커 (공유 바텀시트) ----
+  function buildPickers() { /* 공유 피커 방식 - 빌드 불필요 */ }
+
+  let activePickerSlot = null;
+
+  function usedPlayers(exceptSlot) {
+    return Object.entries(selected).filter(([k,v]) => k !== exceptSlot && v !== null).map(([,v]) => v);
+  }
+
+  function renderSharedPicker() {
+    const slot = activePickerSlot;
+    if (!slot) return;
+    const used = usedPlayers(slot);
+    const team = slot.startsWith('a') ? 'a' : 'b';
+    const listHTML = PLAYERS.map(p => {
+      const isUsed = used.includes(p);
+      const isSel = selected[slot] === p;
+      return `<button class="ppbtn${isUsed?' used':''}${isSel?' sel-'+team:''}"
+        onclick="${isUsed?'void(0)':"selectPlayer('" + slot + "','" + p + "')"}">${p}</button>`;
+    }).join('');
+    document.getElementById('shared-picker-list').innerHTML = listHTML;
+  }
+
+  window.togglePicker = function(slot) {
+    const picker = document.getElementById('shared-player-picker');
+    const bd = document.getElementById('picker-backdrop2');
+    if (activePickerSlot === slot && picker.classList.contains('open')) {
+      closeAllPickers(); return;
+    }
+    closeAllPickers();
+    activePickerSlot = slot;
+    document.getElementById('shared-custom-inp').value = '';
+    renderSharedPicker();
+    picker.classList.add('open');
+    bd.classList.add('open');
+  };
+
+  window.selectPlayer = function(slot, player) {
+    if (usedPlayers(slot).includes(player)) return;
+    selected[slot] = player;
+    const team = slot.startsWith('a') ? 'a' : 'b';
+    document.getElementById('slot-' + slot).className = `slot-display filled-${team}`;
+    document.getElementById('slot-' + slot + '-name').innerHTML =
+      `${player} <span class="slot-x" onclick="clearSlot(event,'${slot}')">✕</span>`;
+    closeAllPickers();
+  };
+
+  window.selectCustomPlayer = function() {
+    const slot = activePickerSlot;
+    if (!slot) return;
+    const inp = document.getElementById('shared-custom-inp');
+    const name = inp.value.trim();
+    if (!name) { inp.focus(); return; }
+    selectPlayer(slot, name);
+  };
+
+  window.clearSlot = function(e, slot) {
+    e.stopPropagation();
+    selected[slot] = null;
+    document.getElementById('slot-' + slot).className = 'slot-display';
+    document.getElementById('slot-' + slot + '-name').textContent = '선수 선택 ▾';
+  };
+
+  function closeAllPickers() {
+    document.getElementById('shared-player-picker').classList.remove('open');
+    document.getElementById('shared-score-picker').classList.remove('open');
+    document.querySelectorAll('.edit-picker').forEach(p => p.classList.remove('open'));
+    document.getElementById('picker-backdrop2').classList.remove('open');
+    activePickerSlot = null;
+    activeScoreSide = null;
+  }
+
+  // ---- 점수 피커 ----
+  const scoreVals = { a: null, b: null };
+  const SCORES = Array.from({length: 15}, (_,i) => i+1);
+
+  function buildScorePickers() {
+    // 공유 점수 그리드 빌드
+    const grid = document.getElementById('score-grid');
+    grid.innerHTML = SCORES.map(n =>
+      `<button class="scbtn" id="sgrid-${n}" onclick="selectScore(${n})">${n}</button>`
+    ).join('');
+  }
+
+  let activeScoreSide = null;
+
+  window.openScorePicker = function(side) {
+    closeAllPickers();
+    activeScoreSide = side;
+    const picker = document.getElementById('shared-score-picker');
+    const bd = document.getElementById('picker-backdrop2');
+    document.getElementById('score-picker-title').textContent = side === 'a' ? '팀 A 점수' : '팀 B 점수';
+    document.getElementById('score-direct-inp').value = scoreVals[side] !== null ? scoreVals[side] : '';
+    // 하이라이트
+    SCORES.forEach(n => {
+      const b = document.getElementById(`sgrid-${n}`);
+      if (b) b.className = 'scbtn' + (scoreVals[side] === n ? ' picked' : '');
+    });
+    picker.classList.add('open');
+    bd.classList.add('open');
+  };
+
+  window.selectScore = function(val) {
+    const side = activeScoreSide;
+    if (!side) return;
+    scoreVals[side] = val;
+    setScoreDisplay(side, val);
+    closeAllPickers();
+  };
+
+  window.confirmDirectScore = function() {
+    const side = activeScoreSide;
+    const inp = document.getElementById('score-direct-inp');
+    const v = parseInt(inp.value);
+    if (isNaN(v) || v < 0) { inp.focus(); return; }
+    scoreVals[side] = v;
+    setScoreDisplay(side, v);
+    closeAllPickers();
+  };
+
+  window.clearActiveScore = function() {
+    const side = activeScoreSide;
+    if (!side) return;
+    scoreVals[side] = null;
+    setScoreDisplay(side, null);
+    closeAllPickers();
+  };
+
+  function setScoreDisplay(side, val) {
+    const el = document.getElementById('sslot-' + side);
+    if (val !== null) { el.textContent = val; el.classList.add('filled'); }
+    else { el.textContent = '-'; el.classList.remove('filled'); }
+  }
+
+  window.clearScore = function(side) {
+    scoreVals[side] = null;
+    setScoreDisplay(side, null);
+  };
+
+  // ---- 경기 추가 ----
+  window.pickResult = function(r) { /* 자동 판정으로 대체됨 */ };
+  window.addGame = async function() {
+    const { a1, a2, b1, b2 } = selected;
+    if (!a1 || !a2 || !b1 || !b2) { alert('4명의 선수를 모두 선택하세요'); return; }
+    // 자동 승자 판정
+    let winner = null;
+    if (scoreVals.a !== null && scoreVals.b !== null) {
+      if (scoreVals.a === scoreVals.b) { alert('동점입니다. 점수를 다시 확인해주세요'); return; }
+      winner = scoreVals.a > scoreVals.b ? 'a' : 'b';
+    } else {
+      alert('점수를 모두 입력하세요\n(팀A 점수와 팀B 점수 모두 필요합니다)');
+      return;
+    }
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true; btn.textContent = '저장 중...';
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const dateStr = `${now.getMonth()+1}/${now.getDate()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    try {
+      await addDoc(gamesCol, {
+        teamA: [a1,a2], teamB: [b1,b2], winner,
+        scoreA: scoreVals.a, scoreB: scoreVals.b,
+        date: dateStr,
+        createdAt: serverTimestamp()
+      });
+      ['a1','a2','b1','b2'].forEach(s => clearSlot({ stopPropagation:()=>{} }, s));
+      clearScore('a'); clearScore('b');
+    } catch(e) { alert('저장 실패: ' + e.message); }
+    btn.disabled = false; btn.textContent = '기록하기';
+  };
+  window.delGame = async function(id) {
+    if (!confirm('이 기록을 삭제할까요?')) return;
+    try { await deleteDoc(doc(db, "games", id)); }
+    catch(e) { alert('삭제 실패: ' + e.message); }
+  };
+  let playerFilter = '';
+
+  window.setFilter = function(f, el) {
+    filter = f;
+    playerFilter = '';
+    document.querySelectorAll('.ftab').forEach(t => t.classList.remove('on'));
+    el.classList.add('on');
+    const sel = document.getElementById('filter-player-select');
+    if (sel) sel.value = '';
+    renderList();
+  };
+
+  window.setPlayerFilter = function(player) {
+    playerFilter = player;
+    filter = 'all';
+    document.querySelectorAll('.ftab').forEach(t => t.classList.remove('on'));
+    document.querySelector('.ftab').classList.add('on');
+    renderList();
+  };
+
+  function buildPlayerFilterSelect() {
+    const sel = document.getElementById('filter-player-select');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">선수 선택</option>' +
+      PLAYERS.map(p => `<option value="${p}">${p}</option>`).join('');
+  }
+
+  // ---- Firestore ----
+  const q = query(gamesCol, orderBy("createdAt", "desc"));
+  onSnapshot(q, snapshot => {
+    games = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderStats();
+    renderList();
+    document.getElementById('loading-overlay').classList.add('hidden');
+  }, err => {
+    console.error(err);
+    document.getElementById('loading-overlay').classList.add('hidden');
+  });
+
+  function getStreak() {
+    if (!games.length) return null;
+    const r = games[0].winner; let cnt = 0;
+    for (const g of games) { if (g.winner === r) cnt++; else break; }
+    return { winner: r, count: cnt };
+  }
+
+  function renderList() {
+    const list = document.getElementById('records');
+    let filtered = games;
+    if (playerFilter) {
+      filtered = games.filter(g => (g.teamA||[]).includes(playerFilter) || (g.teamB||[]).includes(playerFilter));
+    } else if (filter !== 'all') {
+      filtered = games.filter(g => g.winner === filter);
+    }
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>${filter==='all'?'아직 기록이 없습니다.<br>첫 경기를 입력해 보세요!':'해당 기록이 없습니다.'}</div>`;
+      return;
+    }
+    list.innerHTML = filtered.map(g => {
+      const aWon = g.winner === 'a';
+      const saStr = g.scoreA !== null && g.scoreA !== undefined ? g.scoreA : '-';
+      const sbStr = g.scoreB !== null && g.scoreB !== undefined ? g.scoreB : '-';
+      const teamA = (g.teamA||[]).join(', ');
+      const teamB = (g.teamB||[]).join(', ');
+      return `<div class="record-item">
+        <div class="rec-top">
+          <div class="rec-meta" style="flex:1;">
+            <div class="rec-date" style="margin-bottom:5px;">${g.date||''}</div>
+            <div class="rec-team-line ${aWon?'team-won':'team-lost'}">
+              <span class="rec-team-label ${aWon?'rec-team-label-win':'rec-team-label-a'}">A</span>
+              <span class="rec-team-score">${saStr}</span>
+              <span class="rec-players">${teamA}</span>
+            </div>
+            <div class="rec-team-line ${!aWon?'team-won':'team-lost'}">
+              <span class="rec-team-label ${!aWon?'rec-team-label-win':'rec-team-label-b'}">B</span>
+              <span class="rec-team-score">${sbStr}</span>
+              <span class="rec-players">${teamB}</span>
+            </div>
+          </div>
+          <div class="rec-actions">
+            <button class="btn-edit" onclick="openEditModal('${g.id}')">✏️</button>
+            <button class="btn-del" onclick="delGame('${g.id}')">✕</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---- 경기 수정 모달 (완전 독립 구현) ----
+  let editGameId = null;
+  const editSel = { a1: null, a2: null, b1: null, b2: null };
+  const editScores = { a: null, b: null };
+  let editActiveSlot = null;
+  let editActiveScoreSide = null;
+
+  // 슬롯 표시 업데이트
+  function editRefreshSlot(slot) {
+    const id = { a1:'ea1', a2:'ea2', b1:'eb1', b2:'eb2' }[slot];
+    const el = document.getElementById(id + '-display');
+    const val = editSel[slot];
+    const team = slot.startsWith('a') ? 'a' : 'b';
+    const color = team === 'a' ? 'var(--team-a)' : 'var(--team-b)';
+    const borderColor = team === 'a' ? 'var(--team-a)' : 'var(--team-b)';
+    if (val) {
+      el.style.borderStyle = 'solid';
+      el.style.borderColor = borderColor;
+      el.style.background = team === 'a' ? 'rgba(123,110,250,0.1)' : 'rgba(250,142,110,0.1)';
+      el.style.color = 'var(--text)';
+      el.innerHTML = `<span style="flex:1">${val}</span><span onclick="event.stopPropagation();editClearSlot('${slot}')" style="color:var(--muted);padding:2px 6px;font-size:13px;">✕</span>`;
+    } else {
+      el.style.borderStyle = 'dashed';
+      el.style.borderColor = 'rgba(255,255,255,0.2)';
+      el.style.background = 'var(--surface2)';
+      el.style.color = 'var(--muted)';
+      el.textContent = '선수 선택 ▾';
+    }
+  }
+
+  window.editClearSlot = function(slot) {
+    editSel[slot] = null;
+    editRefreshSlot(slot);
+  };
+
+  // 점수 표시 업데이트
+  function editRefreshScore(side) {
+    const el = document.getElementById('es' + side + '-display');
+    const val = editScores[side];
+    if (val !== null) {
+      el.textContent = val;
+      el.style.borderStyle = 'solid';
+      el.style.borderColor = 'var(--accent)';
+      el.style.color = 'var(--text)';
+      el.style.background = 'rgba(123,110,250,0.1)';
+    } else {
+      el.textContent = '-';
+      el.style.borderStyle = 'dashed';
+      el.style.borderColor = 'rgba(255,255,255,0.2)';
+      el.style.color = 'var(--muted)';
+      el.style.background = 'var(--surface2)';
+    }
+  }
+
+  // 모달 열기
+  window.openEditModal = function(id) {
+    const g = games.find(x => x.id === id);
+    if (!g) return;
+    editGameId = id;
+    // 선수 세팅
+    const slots = ['a1','a2','b1','b2'];
+    const vals = [...(g.teamA||[]), ...(g.teamB||[])];
+    slots.forEach((s, i) => {
+      editSel[s] = vals[i] || null;
+      editRefreshSlot(s);
+    });
+    // 점수 세팅
+    editScores.a = (g.scoreA !== null && g.scoreA !== undefined) ? g.scoreA : null;
+    editScores.b = (g.scoreB !== null && g.scoreB !== undefined) ? g.scoreB : null;
+    editRefreshScore('a');
+    editRefreshScore('b');
+    // 날짜 미리 채우기
+    const dateInp = document.getElementById('edit-date-inp');
+    if (dateInp) dateInp.value = g.date || '';
+    // 모달 열기
+    document.getElementById('edit-backdrop').style.display = 'block';
+    const sheet = document.getElementById('edit-sheet');
+    sheet.style.display = 'block';
+    requestAnimationFrame(() => { sheet.style.transform = 'translateY(0)'; });
+  };
+
+  window.closeEditModal = function() {
+    const sheet = document.getElementById('edit-sheet');
+    sheet.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      sheet.style.display = 'none';
+      document.getElementById('edit-backdrop').style.display = 'none';
+    }, 300);
+    editClosePlayerSheet();
+    editCloseScoreSheet();
+    editGameId = null;
+  };
+
+  // 선수 선택 시트
+  window.editOpenPlayerSheet = function(slot) {
+    editActiveSlot = slot;
+    const team = slot.startsWith('a') ? 'a' : 'b';
+    const used = Object.entries(editSel).filter(([k,v]) => k !== slot && v).map(([,v]) => v);
+    document.getElementById('edit-player-sheet-title').textContent =
+      slot === 'a1' ? '팀 A - 선수 1' : slot === 'a2' ? '팀 A - 선수 2' : slot === 'b1' ? '팀 B - 선수 1' : '팀 B - 선수 2';
+    const grid = document.getElementById('edit-player-grid');
+    const selColor = team === 'a' ? 'var(--team-a)' : 'var(--team-b)';
+    const selBg = team === 'a' ? 'rgba(123,110,250,0.2)' : 'rgba(250,142,110,0.2)';
+    grid.innerHTML = PLAYERS.map(p => {
+      const isUsed = used.includes(p);
+      const isSel = editSel[slot] === p;
+      return `<button onclick="${isUsed ? '' : "editPickPlayer('" + p + "')"}"
+        style="height:44px;border-radius:10px;border:1px solid ${isSel ? selColor : 'var(--border)'};
+        background:${isSel ? selBg : 'var(--surface2)'};color:${isSel ? selColor : (isUsed ? 'rgba(255,255,255,0.2)' : 'var(--text)')};
+        font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:600;cursor:${isUsed ? 'not-allowed' : 'pointer'};">${p}</button>`;
+    }).join('');
+    document.getElementById('edit-player-custom-inp').value = '';
+    document.getElementById('edit-player-backdrop').style.display = 'block';
+    const ps = document.getElementById('edit-player-sheet');
+    ps.style.display = 'block';
+    requestAnimationFrame(() => { ps.style.transform = 'translateY(0)'; });
+  };
+
+  window.editPickPlayer = function(player) {
+    editSel[editActiveSlot] = player;
+    editRefreshSlot(editActiveSlot);
+    editClosePlayerSheet();
+  };
+
+  window.editConfirmCustomPlayer = function() {
+    const inp = document.getElementById('edit-player-custom-inp');
+    const name = inp.value.trim();
+    if (!name) { inp.focus(); return; }
+    editSel[editActiveSlot] = name;
+    editRefreshSlot(editActiveSlot);
+    editClosePlayerSheet();
+  };
+
+  window.editClosePlayerSheet = function() {
+    const ps = document.getElementById('edit-player-sheet');
+    if (!ps) return;
+    ps.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      ps.style.display = 'none';
+      document.getElementById('edit-player-backdrop').style.display = 'none';
+    }, 250);
+    editActiveSlot = null;
+  };
+
+  // 점수 선택 시트
+  window.editOpenScoreSheet = function(side) {
+    editActiveScoreSide = side;
+    document.getElementById('edit-score-sheet-title').textContent = side === 'a' ? '팀 A 점수' : '팀 B 점수';
+    const grid = document.getElementById('edit-score-grid');
+    grid.innerHTML = SCORES.map(n =>
+      `<button onclick="editPickScore(${n})"
+        style="height:44px;border-radius:8px;border:1px solid ${editScores[side]===n ? 'var(--accent)' : 'var(--border)'};
+        background:${editScores[side]===n ? 'rgba(123,110,250,0.25)' : 'var(--surface2)'};
+        color:${editScores[side]===n ? 'var(--accent)' : 'var(--text)'};
+        font-family:'Bebas Neue',sans-serif;font-size:18px;cursor:pointer;">${n}</button>`
+    ).join('');
+    document.getElementById('edit-score-custom-inp').value = editScores[side] !== null ? editScores[side] : '';
+    document.getElementById('edit-score-backdrop').style.display = 'block';
+    const ss = document.getElementById('edit-score-sheet');
+    ss.style.display = 'block';
+    requestAnimationFrame(() => { ss.style.transform = 'translateY(0)'; });
+  };
+
+  window.editPickScore = function(val) {
+    editScores[editActiveScoreSide] = val;
+    editRefreshScore(editActiveScoreSide);
+    editCloseScoreSheet();
+  };
+
+  window.editConfirmCustomScore = function() {
+    const inp = document.getElementById('edit-score-custom-inp');
+    const v = parseInt(inp.value);
+    if (isNaN(v) || v < 0) { inp.focus(); return; }
+    editScores[editActiveScoreSide] = v;
+    editRefreshScore(editActiveScoreSide);
+    editCloseScoreSheet();
+  };
+
+  window.editClearScore = function() {
+    editScores[editActiveScoreSide] = null;
+    editRefreshScore(editActiveScoreSide);
+    editCloseScoreSheet();
+  };
+
+  window.editCloseScoreSheet = function() {
+    const ss = document.getElementById('edit-score-sheet');
+    if (!ss) return;
+    ss.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      ss.style.display = 'none';
+      document.getElementById('edit-score-backdrop').style.display = 'none';
+    }, 250);
+    editActiveScoreSide = null;
+  };
+
+  // 저장
+  window.saveEdit = async function() {
+    if (!editGameId) return;
+    const { a1, a2, b1, b2 } = editSel;
+    if (!a1 || !a2 || !b1 || !b2) { alert('4명의 선수를 모두 선택하세요'); return; }
+    if (editScores.a === null || editScores.b === null) { alert('점수를 모두 입력하세요'); return; }
+    if (editScores.a === editScores.b) { alert('동점입니다. 점수를 다시 확인하세요'); return; }
+    const winner = editScores.a > editScores.b ? 'a' : 'b';
+    const dateInp = document.getElementById('edit-date-inp');
+    const newDate = dateInp ? dateInp.value.trim() : '';
+    try {
+      const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const updateData = { teamA: [a1, a2], teamB: [b1, b2], winner, scoreA: editScores.a, scoreB: editScores.b };
+      if (newDate) updateData.date = newDate;
+      await updateDoc(doc(db, "games", editGameId), updateData);
+      closeEditModal();
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  };
+
+
+
+  loadPlayers();
+
+  // ---- 시계 (season-tag 실시간) ----
+  function updateClock() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const str = `${now.getMonth()+1}/${now.getDate()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const el = document.getElementById('season-tag');
+    if (el) el.textContent = str;
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  // ---- 통계 섹션 collapse ----
+  window.toggleStats = function() {
+    const body = document.getElementById('stats-body');
+    const icon = document.getElementById('stats-toggle-icon');
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? 'block' : 'none';
+    icon.style.transform = isHidden ? 'rotate(180deg)' : '';
+  };
+
+  // ---- 경기 기록 텍스트 export ----
+  window.exportRecords = function() {
+    if (!games.length) { alert('내보낼 기록이 없습니다'); return; }
+    const lines = [];
+    lines.push('🏓 피클볼 경기 기록');
+    lines.push('='.repeat(30));
+    lines.push('');
+    games.forEach((g, i) => {
+      const aWon = g.winner === 'a';
+      const teamA = (g.teamA||[]).join(', ');
+      const teamB = (g.teamB||[]).join(', ');
+      const score = g.scoreA !== null && g.scoreA !== undefined
+        ? `${g.scoreA} : ${g.scoreB}` : '- : -';
+      const winner = aWon ? `팀A (${teamA})` : `팀B (${teamB})`;
+      lines.push(`[${g.date || '-'}]`);
+      lines.push(`  팀A: ${teamA}`);
+      lines.push(`  팀B: ${teamB}`);
+      lines.push(`  스코어: ${score}`);
+      lines.push(`  승리: ${winner}`);
+      lines.push('');
+    });
+    lines.push('-'.repeat(30));
+    const total = games.length;
+    const winsA = games.filter(g => g.winner === 'a').length;
+    lines.push(`총 ${total}경기 | 팀A ${winsA}승 | 팀B ${total-winsA}승`);
+    const text = lines.join('\n');
+    // 클립보드 복사
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => alert('✅ 클립보드에 복사되었습니다!'));
+    } else {
+      // fallback: 다운로드
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'pickleball_records.txt';
+      a.click(); URL.revokeObjectURL(url);
+    }
+  };
+</script>
+</body>
+</html>
