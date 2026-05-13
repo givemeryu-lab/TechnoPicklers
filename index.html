@@ -649,7 +649,7 @@
     const now = new Date();
     document.getElementById('season-tag').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월`;
 
-    if (statTab === 'all') {
+    if (statTab === PLAYERS[0]) {
       // 전체 통계 (팀A vs 팀B)
       const winsA = games.filter(g => g.winner === 'a').length;
       const winsB = games.filter(g => g.winner === 'b').length;
