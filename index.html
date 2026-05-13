@@ -596,7 +596,7 @@
   let picked = null;
   let games = [];
   let filter = 'all';
-  let statTab = 'all'; // 'all' or player name
+  let statTab = PLAYERS[Math.floor(Math.random() * PLAYERS.length)]; // 'all' or player name
 
   // ---- Firebase: 선수 목록 ----
   async function loadPlayers() {
@@ -628,9 +628,7 @@
   function buildPlayerTabs() {
     const wrap = document.getElementById('player-tabs');
     // 초기값: 랜덤 선수
-    if (PLAYERS.length > 0 && statTab === 'all') {
-      statTab = PLAYERS[Math.floor(Math.random() * PLAYERS.length)];
-    }
+    
     const playerBtns = PLAYERS.map(p =>
       `<button class="ptab ${statTab===p?'on':''}" onclick="setStatTab('${p}',this)">${p}</button>`
     ).join('');
