@@ -106,7 +106,7 @@
   .picker-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; height: 40px; padding: 0 12px; outline: none; }
   .picker-search:focus { border-color: var(--accent); }
   .picker-search::placeholder { color: var(--muted); }
-  .picker-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; justify-items: center; }
+  .picker-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; justify-items: center; }
   .ppbtn { height: 44px; width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; padding: 0; }
   .ppbtn:active:not(.used) { background: rgba(123,110,250,0.25); border-color: var(--accent); }
   .ppbtn.used { opacity: 0.22; }
@@ -645,7 +645,8 @@
     if (PLAYERS.length > 0 && !PLAYERS.includes(statTab)) {
       statTab = PLAYERS[Math.floor(Math.random() * PLAYERS.length)];
     }
-    const playerBtns = PLAYERS.map(p =>
+    const sortedForTabs = [...PLAYERS].sort((a, b) => a.localeCompare(b, 'ko'));
+    const playerBtns = sortedForTabs.map(p =>
       `<button class="ptab ${statTab===p?'on':''}" onclick="setStatTab('${p}',this)">${p}</button>`
     ).join('');
     wrap.innerHTML = playerBtns;
@@ -839,7 +840,8 @@
     if (!slot) return;
     const used = usedPlayers(slot);
     const team = slot.startsWith('a') ? 'a' : 'b';
-    const listHTML = PLAYERS.map(p => {
+    const sorted = [...PLAYERS].sort((a, b) => a.localeCompare(b, 'ko'));
+    const listHTML = sorted.map(p => {
       const isUsed = used.includes(p);
       const isSel = selected[slot] === p;
       return `<button class="ppbtn${isUsed?' used':''}${isSel?' sel-'+team:''}"
@@ -1043,8 +1045,9 @@
   function buildPlayerFilterSelect() {
     const sel = document.getElementById('filter-player-select');
     if (!sel) return;
+    const sorted = [...PLAYERS].sort((a, b) => a.localeCompare(b, 'ko'));
     sel.innerHTML = '<option value="">👤</option>' +
-      PLAYERS.map(p => `<option value="${p}">${p}</option>`).join('');
+      sorted.map(p => `<option value="${p}">${p}</option>`).join('');
   }
 
   // ---- Firestore ----
