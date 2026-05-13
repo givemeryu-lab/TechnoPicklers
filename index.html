@@ -56,7 +56,7 @@
   .ptab.all-tab.on { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); }
 
   /* 통계 카드 - 2x2 그리드 */
-  .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.875rem; text-align: center; position: relative; overflow: hidden; }
   .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.3s; transform-origin: left; }
   .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; }
@@ -106,7 +106,7 @@
   .picker-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; height: 40px; padding: 0 12px; outline: none; }
   .picker-search:focus { border-color: var(--accent); }
   .picker-search::placeholder { color: var(--muted); }
-  .picker-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; justify-items: center; }
+  .picker-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; justify-items: center; }
   .ppbtn { height: 44px; width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; padding: 0; }
   .ppbtn:active:not(.used) { background: rgba(123,110,250,0.25); border-color: var(--accent); }
   .ppbtn.used { opacity: 0.22; }
