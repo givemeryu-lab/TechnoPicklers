@@ -56,7 +56,7 @@
   .ptab.all-tab.on { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); }
 
   /* 통계 카드 - 2x2 그리드 */
-  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.875rem; text-align: center; position: relative; overflow: hidden; }
   .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.3s; transform-origin: left; }
   .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; }
@@ -106,7 +106,7 @@
   .picker-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; height: 40px; padding: 0 12px; outline: none; }
   .picker-search:focus { border-color: var(--accent); }
   .picker-search::placeholder { color: var(--muted); }
-  .picker-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; justify-items: center; }
+  .picker-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; justify-items: center; }
   .ppbtn { height: 44px; width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; padding: 0; }
   .ppbtn:active:not(.used) { background: rgba(123,110,250,0.25); border-color: var(--accent); }
   .ppbtn.used { opacity: 0.22; }
@@ -393,7 +393,7 @@
       <button class="btn-manage" onclick="openModal()">👥 선수</button>
     </div>
   </header>
- 
+
   <!-- 경기 추가 -->
   <div class="add-card">
     <div class="add-card-title">+ 경기 추가</div>
@@ -525,14 +525,14 @@
 
   <div class="records-card">
     <div class="records-head">
-      <div class="records-title">기록</div>
+      <div class="records-title">경기 기록</div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <button onclick="exportRecords()" style="height:26px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;">📤EXPORT</button>
-        <div class="filter-wrap">
+        <button onclick="exportRecords()" style="height:26px;padding:0 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;">📤 내보내기</button>
+        <div class="filter-wrap" style="align-items:center;">
           <button class="ftab on" onclick="setFilter('all',this)">전체</button>
           <select id="filter-player-select" onchange="setPlayerFilter(this.value)"
-            style="height:26px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;padding:0 8px;cursor:pointer;outline:none;">
-            <option value="">선수</option>
+            style="height:26px;max-width:72px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;padding:0 6px;cursor:pointer;outline:none;overflow:hidden;text-overflow:ellipsis;">
+            <option value="">👤</option>
           </select>
         </div>
       </div>
@@ -596,7 +596,7 @@
   let picked = null;
   let games = [];
   let filter = 'all';
-  let statTab = PLAYERS[Math.floor(Math.random() * PLAYERS.length)]; // 'all' or player name
+  let statTab = 'all'; // 'all' or player name
 
   // ---- Firebase: 선수 목록 ----
   async function loadPlayers() {
@@ -627,8 +627,10 @@
   // ---- 선수 탭 빌드 ----
   function buildPlayerTabs() {
     const wrap = document.getElementById('player-tabs');
-    // 초기값: 랜덤 선수
-    
+    // 항상 랜덤 선수로 초기화
+    if (PLAYERS.length > 0) {
+      statTab = PLAYERS[Math.floor(Math.random() * PLAYERS.length)];
+    }
     const playerBtns = PLAYERS.map(p =>
       `<button class="ptab ${statTab===p?'on':''}" onclick="setStatTab('${p}',this)">${p}</button>`
     ).join('');
@@ -1027,7 +1029,7 @@
   function buildPlayerFilterSelect() {
     const sel = document.getElementById('filter-player-select');
     if (!sel) return;
-    sel.innerHTML = '<option value="">선수 선택</option>' +
+    sel.innerHTML = '<option value="">👤</option>' +
       PLAYERS.map(p => `<option value="${p}">${p}</option>`).join('');
   }
 
@@ -1366,7 +1368,7 @@
     lines.push(`총 ${total}경기 | 팀A ${winsA}승 | 팀B ${total-winsA}승`);
     const text = lines.join('\n');
     // 클립보드 복사
-    if (0) {
+    if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => alert('✅ 클립보드에 복사되었습니다!'));
     } else {
       // fallback: 다운로드
