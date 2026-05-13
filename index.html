@@ -1486,8 +1486,8 @@
         ? `${g.scoreA} : ${g.scoreB}` : '- : -';
       const winner = aWon ? `팀A (${teamA})` : `팀B (${teamB})`;
       lines.push(`[${g.date || '-'}]`);
-      lines.push(`  팀A: ${teamA}`);
-      lines.push(`  팀B: ${teamB}`);
+      lines.push(`  ${g.scoreA}: ${teamA}`);
+      lines.push(`  ${g.scoreB}: ${teamB}`);
       lines.push(`  스코어: ${score}`);
       lines.push(`  승리: ${winner}`);
       if (g.comment) lines.push(`  코멘트: ${g.comment}`);
@@ -1506,7 +1506,7 @@
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'pickleball_records.txt';
+      a.href = url; a.download = 'Techno_records.txt';
       a.click(); URL.revokeObjectURL(url);
     }
   };
