@@ -637,6 +637,7 @@
 
     if (statTab === 'all') {
       // 전체 통계 (팀A vs 팀B)
+      /*
       const winsA = games.filter(g => g.winner === 'a').length;
       const winsB = games.filter(g => g.winner === 'b').length;
       const total = games.length;
@@ -673,6 +674,7 @@
           document.getElementById('streak-info').innerHTML = `<span class="streak-badge ${cls}">${label} ${streak.count}</span>`;
         } else { document.getElementById('streak-info').innerHTML = ''; }
       } else { wrap.style.display = 'none'; }
+       */
 
     } else {
       // 특정 선수 통계
@@ -1329,8 +1331,8 @@
         ? `${g.scoreA} : ${g.scoreB}` : '- : -';
       const winner = aWon ? `팀A (${teamA})` : `팀B (${teamB})`;
       lines.push(`[${g.date || '-'}]`);
-      lines.push(`  팀A: (${g.scoreA}) ${teamA}`);
-      lines.push(`  팀B: (${g.scoreB}) ${teamB}`);
+      lines.push(`  팀A ${g.scoreA} ${teamA}`);
+      lines.push(`  팀B ${g.scoreB} ${teamB}`);
       //lines.push(`  스코어: ${score}`);
       lines.push(`  승리: ${winner}`);
       if (g.comment) lines.push(`  코멘트: ${g.comment}`);
