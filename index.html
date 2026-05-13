@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>테크노 피클볼 전적 관리</title>
+<title>피클볼 전적 관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -455,6 +455,20 @@
       <span id="stats-toggle-icon" style="font-size:13px;color:var(--muted);transition:transform 0.2s;">▼</span>
     </div>
     <div id="stats-body" style="display:none;">
+    <!-- 특수 통계 버튼 -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <button onclick="showSpecialStat('partner')"
+        style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
+        id="special-btn-partner">🤝 최다 파트너</button>
+      <button onclick="showSpecialStat('winteam')"
+        style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
+        id="special-btn-winteam">🏆 다승 팀</button>
+      <button onclick="showSpecialStat('leastconcede')"
+        style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
+        id="special-btn-leastconcede">🛡️ 최소 실점</button>
+    </div>
+    <!-- 특수 통계 결과 박스 -->
+    <div id="special-stat-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.875rem 1rem;margin-bottom:10px;font-size:13px;color:var(--text);line-height:1.8;"></div>
     <!-- 선수 탭 -->
     <div class="player-tabs" id="player-tabs"></div>
     <!-- 통계 카드 row 1: 승패 -->
@@ -596,7 +610,7 @@
   let picked = null;
   let games = [];
   let filter = 'all';
-  let statTab = PLAYERS[0]; // 'all' or player name
+  let statTab = ''; // empty → buildPlayerTabs sets random
 
   // ---- Firebase: 선수 목록 ----
   async function loadPlayers() {
@@ -627,8 +641,8 @@
   // ---- 선수 탭 빌드 ----
   function buildPlayerTabs() {
     const wrap = document.getElementById('player-tabs');
-    // 항상 랜덤 선수로 초기화
-    if (PLAYERS.length > 0) {
+    // statTab이 비어있거나 PLAYERS에 없으면 랜덤 초기화
+    if (PLAYERS.length > 0 && !PLAYERS.includes(statTab)) {
       statTab = PLAYERS[Math.floor(Math.random() * PLAYERS.length)];
     }
     const playerBtns = PLAYERS.map(p =>
@@ -649,7 +663,7 @@
     const now = new Date();
     document.getElementById('season-tag').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월`;
 
-    if (statTab === PLAYERS[0]) {
+    if (statTab === 'all') {
       // 전체 통계 (팀A vs 팀B)
       const winsA = games.filter(g => g.winner === 'a').length;
       const winsB = games.filter(g => g.winner === 'b').length;
@@ -1318,6 +1332,120 @@
 
 
 
+  // ---- 특수 통계 ----
+  let activeSpecialBtn = null;
+
+  window.showSpecialStat = function(type) {
+    // 버튼 토글
+    const btnIds = ['special-btn-partner','special-btn-winteam','special-btn-leastconcede'];
+    const typeMap = { partner:'special-btn-partner', winteam:'special-btn-winteam', leastconcede:'special-btn-leastconcede' };
+    const box = document.getElementById('special-stat-box');
+
+    if (activeSpecialBtn === type) {
+      // 같은 버튼 재클릭 → 닫기
+      activeSpecialBtn = null;
+      box.style.display = 'none';
+      btnIds.forEach(id => {
+        const b = document.getElementById(id);
+        b.style.background = 'var(--surface2)';
+        b.style.color = 'var(--muted)';
+        b.style.borderColor = 'var(--border)';
+      });
+      return;
+    }
+
+    activeSpecialBtn = type;
+    btnIds.forEach(id => {
+      const b = document.getElementById(id);
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.borderColor = 'var(--border)';
+    });
+    const activeBtn = document.getElementById(typeMap[type]);
+    activeBtn.style.background = 'rgba(123,110,250,0.2)';
+    activeBtn.style.color = 'var(--accent)';
+    activeBtn.style.borderColor = 'var(--accent)';
+
+    const validGames = games.filter(g => g.teamA && g.teamB);
+    if (!validGames.length) { box.style.display = 'block'; box.innerHTML = '기록이 없습니다.'; return; }
+
+    let html = '';
+
+    if (type === 'partner') {
+      // 각 선수별 함께 뛴 파트너 횟수
+      const pairCount = {};
+      validGames.forEach(g => {
+        [[g.teamA[0], g.teamA[1]], [g.teamB[0], g.teamB[1]]].forEach(([p1, p2]) => {
+          if (!p1 || !p2) return;
+          const key = [p1, p2].sort().join('|');
+          pairCount[key] = (pairCount[key] || 0) + 1;
+        });
+      });
+      const sorted = Object.entries(pairCount).sort((a,b) => b[1]-a[1]).slice(0,5);
+      html = '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">🤝 최다 파트너 조합</div>';
+      sorted.forEach(([key, cnt], i) => {
+        const [p1, p2] = key.split('|');
+        const medal = ['🥇','🥈','🥉','4️⃣','5️⃣'][i];
+        html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+          <span>${medal} <span style="color:var(--accent);font-weight:600;">${p1}</span> + <span style="color:var(--accent);font-weight:600;">${p2}</span></span>
+          <span style="color:var(--muted);">${cnt}회</span></div>`;
+      });
+
+    } else if (type === 'winteam') {
+      // 함께 승리한 팀 조합 횟수
+      const winCount = {};
+      validGames.forEach(g => {
+        const winners = g.winner === 'a' ? g.teamA : g.teamB;
+        if (!winners || winners.length < 2) return;
+        const key = [...winners].sort().join('|');
+        winCount[key] = (winCount[key] || 0) + 1;
+      });
+      const sorted = Object.entries(winCount).sort((a,b) => b[1]-a[1]).slice(0,5);
+      html = '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">🏆 다승 팀 조합</div>';
+      sorted.forEach(([key, cnt], i) => {
+        const [p1, p2] = key.split('|');
+        const medal = ['🥇','🥈','🥉','4️⃣','5️⃣'][i];
+        html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+          <span>${medal} <span style="color:var(--win);font-weight:600;">${p1}</span> + <span style="color:var(--win);font-weight:600;">${p2}</span></span>
+          <span style="color:var(--muted);">${cnt}승</span></div>`;
+      });
+
+    } else if (type === 'leastconcede') {
+      // 각 팀 조합별 평균 실점 (최소 2경기 이상)
+      const teamStats = {};
+      validGames.forEach(g => {
+        if (g.scoreA === null || g.scoreB === null) return;
+        [[g.teamA, g.scoreB], [g.teamB, g.scoreA]].forEach(([team, conceded]) => {
+          if (!team || team.length < 2) return;
+          const key = [...team].sort().join('|');
+          if (!teamStats[key]) teamStats[key] = { total: 0, games: 0 };
+          teamStats[key].total += conceded;
+          teamStats[key].games += 1;
+        });
+      });
+      const sorted = Object.entries(teamStats)
+        .filter(([, v]) => v.games >= 2)
+        .map(([key, v]) => [key, v.total / v.games, v.games])
+        .sort((a,b) => a[1]-b[1])
+        .slice(0,5);
+      html = '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">🛡️ 최소 실점 팀 (평균, 2경기+)</div>';
+      if (!sorted.length) {
+        html += '<div style="color:var(--muted);font-size:12px;">데이터가 부족합니다</div>';
+      } else {
+        sorted.forEach(([key, avg, cnt], i) => {
+          const [p1, p2] = key.split('|');
+          const medal = ['🥇','🥈','🥉','4️⃣','5️⃣'][i];
+          html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+            <span>${medal} <span style="color:#A0D4FF;font-weight:600;">${p1}</span> + <span style="color:#A0D4FF;font-weight:600;">${p2}</span> <span style="color:var(--muted);font-size:11px;">(${cnt}경기)</span></span>
+            <span style="color:var(--muted);">평균 ${avg.toFixed(1)}실점</span></div>`;
+        });
+      }
+    }
+
+    box.innerHTML = html;
+    box.style.display = 'block';
+  };
+
   loadPlayers();
 
   // ---- 시계 (season-tag 실시간) ----
@@ -1368,7 +1496,7 @@
     lines.push(`총 ${total}경기 | 팀A ${winsA}승 | 팀B ${total-winsA}승`);
     const text = lines.join('\n');
     // 클립보드 복사
-    if (navigator.clipboard) {
+    if (0) {
       navigator.clipboard.writeText(text).then(() => alert('✅ 클립보드에 복사되었습니다!'));
     } else {
       // fallback: 다운로드
