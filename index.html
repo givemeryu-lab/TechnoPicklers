@@ -525,14 +525,14 @@
 
   <div class="records-card">
     <div class="records-head">
-      <div class="records-title">경기 기록</div>
+      <div class="records-title">기록</div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <button onclick="exportRecords()" style="height:26px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;">📤 내보내기</button>
+        <button onclick="exportRecords()" style="height:26px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;">📤EXPORT</button>
         <div class="filter-wrap">
           <button class="ftab on" onclick="setFilter('all',this)">전체</button>
           <select id="filter-player-select" onchange="setPlayerFilter(this.value)"
             style="height:26px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;padding:0 8px;cursor:pointer;outline:none;">
-            <option value="">선수 선택</option>
+            <option value="">선수</option>
           </select>
         </div>
       </div>
