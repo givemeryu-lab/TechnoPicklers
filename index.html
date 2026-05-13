@@ -56,7 +56,7 @@
   .ptab.all-tab.on { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); }
 
   /* 통계 카드 - 2x2 그리드 */
-  .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.875rem; text-align: center; position: relative; overflow: hidden; }
   .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.3s; transform-origin: left; }
   .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; }
@@ -1298,7 +1298,7 @@
   function updateClock() {
     const now = new Date();
     const pad = n => String(n).padStart(2,'0');
-    const str = `${now.getMonth()+1}/${now.getDate()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const str = `${now.getYear()+1} ${now.getMonth()+1}/${now.getDate()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
     const el = document.getElementById('season-tag');
     if (el) el.textContent = str;
   }
@@ -1329,9 +1329,9 @@
         ? `${g.scoreA} : ${g.scoreB}` : '- : -';
       const winner = aWon ? `팀A (${teamA})` : `팀B (${teamB})`;
       lines.push(`[${g.date || '-'}]`);
-      lines.push(`  팀A: ${teamA}`);
-      lines.push(`  팀B: ${teamB}`);
-      lines.push(`  스코어: ${score}`);
+      lines.push(`  팀A: (${g.scoreA}) ${teamA}`);
+      lines.push(`  팀B: (${g.scoreB}) ${teamB}`);
+      //lines.push(`  스코어: ${score}`);
       lines.push(`  승리: ${winner}`);
       if (g.comment) lines.push(`  코멘트: ${g.comment}`);
       lines.push('');
@@ -1342,7 +1342,7 @@
     lines.push(`총 ${total}경기 | 팀A ${winsA}승 | 팀B ${total-winsA}승`);
     const text = lines.join('\n');
     // 클립보드 복사
-    if (navigator.clipboard) {
+    if (0) {
       navigator.clipboard.writeText(text).then(() => alert('✅ 클립보드에 복사되었습니다!'));
     } else {
       // fallback: 다운로드
