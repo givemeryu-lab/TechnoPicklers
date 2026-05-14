@@ -1488,9 +1488,7 @@
       lines.push(`[${g.date || '-'}]`);
       lines.push(`  ${g.scoreA}: ${teamA}`);
       lines.push(`  ${g.scoreB}: ${teamB}`);
-      lines.push(`  스코어: ${score}`);
-      lines.push(`  승리: ${winner}`);
-      if (g.comment) lines.push(`  코멘트: ${g.comment}`);
+            if (g.comment) lines.push(`  코멘트: ${g.comment}`);
       lines.push('');
     });
     lines.push('-'.repeat(30));
@@ -1499,16 +1497,25 @@
     lines.push(`총 ${total}경기 | 팀A ${winsA}승 | 팀B ${total-winsA}승`);
     const text = lines.join('\n');
     // 클립보드 복사
-    if (0) {
-      navigator.clipboard.writeText(text).then(() => alert('✅ 클립보드에 복사되었습니다!'));
-    } else {
-      // fallback: 다운로드
-      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'Techno_records.txt';
-      a.click(); URL.revokeObjectURL(url);
-    }
+    
+    // BOM 추가 → 윈도우 메모장/엑셀에서 한글 깨짐 방지
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const now2 = new Date();
+    const pad2 = n => String(n).padStart(2,'0');
+    a.href = url;
+    a.download = `pickleball_${now2.getFullYear()}${pad2(now2.getMonth()+1)}${pad2(now2.getDate())}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    // 클립보드 추가 복사 (지원 시)
+    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+    alert('✅ 파일로 저장되었습니다!');
+
+
   };
 </script>
 </body>
