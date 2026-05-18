@@ -56,7 +56,7 @@
   .ptab.all-tab.on { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); }
 
   /* 통계 카드 - 2x2 그리드 */
-  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.875rem; text-align: center; position: relative; overflow: hidden; }
   .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.3s; transform-origin: left; }
   .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; }
@@ -106,7 +106,7 @@
   .picker-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; height: 40px; padding: 0 12px; outline: none; }
   .picker-search:focus { border-color: var(--accent); }
   .picker-search::placeholder { color: var(--muted); }
-  .picker-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; justify-items: center; }
+  .picker-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; justify-items: center; }
   .ppbtn { height: 44px; width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; padding: 0; }
   .ppbtn:active:not(.used) { background: rgba(123,110,250,0.25); border-color: var(--accent); }
   .ppbtn.used { opacity: 0.22; }
@@ -435,13 +435,15 @@
       </div>
     </div>
     <div style="margin-bottom:8px;">
-      <textarea id="inp-comment" placeholder="경기 코멘트 (선택)" maxlength="100" rows="2"
+      <textarea id="inp-comment" placeholder="경기 코멘트 또는 선수 정보 붙여넣기&#10;예: a, b vs c, d  또는  a b c d" maxlength="200" rows="2"
         style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
                color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;
                padding:8px 10px;outline:none;resize:none;line-height:1.5;
                transition:border-color 0.2s;"
         onfocus="this.style.borderColor='var(--accent)'"
-        onblur="this.style.borderColor='var(--border)'"></textarea>
+        onblur="this.style.borderColor='var(--border)'"
+        oninput="tryParseGameInfo(this.value)"></textarea>
+      <div id="parse-preview" style="display:none;margin-top:5px;font-size:12px;color:var(--win);padding:4px 8px;background:rgba(0,229,160,0.08);border-radius:6px;border:1px solid rgba(0,229,160,0.2);"></div>
     </div>
     <div class="bottom-row">
       <button class="btn-add" id="btn-submit" onclick="addGame()" style="width:100%">기록하기</button>
@@ -466,6 +468,15 @@
       <button onclick="showSpecialStat('leastconcede')"
         style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
         id="special-btn-leastconcede">🛡️ 최소 실점</button>
+      <button onclick="showSpecialStat('mostplay')"
+        style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
+        id="special-btn-mostplay">🎮 최다 플레이</button>
+      <button onclick="showSpecialStat('mostscore')"
+        style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
+        id="special-btn-mostscore">⚡ 최다 득점</button>
+      <button onclick="showSpecialStat('mostconcede')"
+        style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
+        id="special-btn-mostconcede">💥 최다 실점</button>
     </div>
     <!-- 특수 통계 결과 박스 -->
     <div id="special-stat-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.875rem 1rem;margin-bottom:10px;font-size:13px;color:var(--text);line-height:1.8;"></div>
@@ -546,7 +557,7 @@
           <button class="ftab on" onclick="setFilter('all',this)">전체</button>
           <select id="filter-player-select" onchange="setPlayerFilter(this.value)"
             style="height:26px;max-width:72px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:11px;padding:0 6px;cursor:pointer;outline:none;overflow:hidden;text-overflow:ellipsis;">
-            <option value="">선수선택</option>
+            <option value="">👤</option>
           </select>
         </div>
       </div>
@@ -574,6 +585,10 @@
     <div class="picker-handle" style="margin:0;flex:1;"></div>
     <button id="picker-cancel-btn" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;padding:4px 14px;cursor:pointer;">취소</button>
   </div>
+  <input id="picker-search-inp" type="text" placeholder="🔍 검색..." maxlength="20"
+    oninput="filterPickerList(this.value)" onclick="event.stopPropagation()"
+    style="width:100%;height:38px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;padding:0 12px;outline:none;margin-bottom:8px;"
+    onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
   <div class="picker-list" id="shared-picker-list"></div>
   <div class="picker-divider"></div>
   <div class="picker-custom-row">
@@ -613,6 +628,108 @@
   let statTab = ''; // empty → buildPlayerTabs sets random
 
   // ---- Firebase: 선수 목록 ----
+
+  // ---- 경기 정보 자동 파싱 ----
+  // 지원 형식:
+  //   a1, a2, b1, b2           → 순서대로 팀A 2명, 팀B 2명
+  //   a1 a2 b1 b2
+  //   teamA1, teamA2 vs teamB1, teamB2  (vs/VS 구분자)
+  //   teamA1 teamA2 VS teamB1 teamB2
+
+  // 숫자인지 판별 (점수)
+  function isScore(s) { return /^\d{1,2}$/.test(s) && parseInt(s) >= 0 && parseInt(s) <= 99; }
+
+  window.tryParseGameInfo = function(text) {
+    const preview = document.getElementById('parse-preview');
+    if (!text.trim()) { preview.style.display = 'none'; return; }
+
+    let teamA = [], teamB = [], scoreA = null, scoreB = null;
+
+    // 토큰 분리 (쉼표, 공백 기준)
+    const allTokens = text.trim().split(/[\s,，、]+/).map(s=>s.trim()).filter(Boolean);
+
+    // vs/VS 포함 여부 확인
+    const vsIdx = allTokens.findIndex(t => /^[vV][sS]$/.test(t));
+
+    if (vsIdx !== -1) {
+      // "a1 a2 11 vs b1 b2 7" 또는 "a1 a2 vs b1 b2 11:7" 등
+      const leftTokens = allTokens.slice(0, vsIdx);
+      const rightTokens = allTokens.slice(vsIdx + 1);
+
+      // 좌측: 선수(비숫자) + 점수(숫자) 분리
+      teamA = leftTokens.filter(t => !isScore(t));
+      const leftScores = leftTokens.filter(isScore);
+      if (leftScores.length > 0) scoreA = parseInt(leftScores[leftScores.length-1]);
+
+      // 우측: 선수 + 점수 분리
+      // "b1 b2 7" 또는 "7 b1 b2" 또는 "b1 b2"
+      teamB = rightTokens.filter(t => !isScore(t));
+      const rightScores = rightTokens.filter(isScore);
+      if (rightScores.length > 0) scoreB = parseInt(rightScores[rightScores.length-1]);
+
+    } else {
+      // vs 없음: 순서대로 파싱
+      // 형식: "a1 a2 b1 b2 11 7" 또는 "a1 a2 11 b1 b2 7" 등
+      // 비숫자 토큰 4개 = 선수, 숫자 토큰 2개 = 점수
+
+      // 콜론 점수 형식: "11:7" 또는 "11-7"
+      const colonScore = text.match(/(\d{1,2})[:\-](\d{1,2})/);
+      if (colonScore) {
+        scoreA = parseInt(colonScore[1]);
+        scoreB = parseInt(colonScore[2]);
+      }
+
+      const nameTks = allTokens.filter(t => !isScore(t) && !/^\d+[:\-]\d+$/.test(t));
+      const scoreTks = colonScore ? [] : allTokens.filter(isScore);
+
+      if (nameTks.length >= 4) {
+        teamA = nameTks.slice(0, 2);
+        teamB = nameTks.slice(2, 4);
+      }
+      if (!colonScore && scoreTks.length >= 2) {
+        scoreA = parseInt(scoreTks[0]);
+        scoreB = parseInt(scoreTks[1]);
+      } else if (!colonScore && scoreTks.length === 1) {
+        // 점수 하나만 있으면 팀A 점수로
+        scoreA = parseInt(scoreTks[0]);
+      }
+    }
+
+    if (teamA.length < 2 || teamB.length < 2) {
+      preview.style.display = 'none';
+      return;
+    }
+
+    const [p1, p2] = teamA;
+    const [p3, p4] = teamB;
+    const scoreInfo = (scoreA !== null && scoreB !== null)
+      ? ` | <b style="color:var(--team-a)">${scoreA}</b> : <b style="color:var(--team-b)">${scoreB}</b>`
+      : '';
+    const saStr = scoreA !== null ? scoreA : 'null';
+    const sbStr = scoreB !== null ? scoreB : 'null';
+
+    preview.innerHTML = `✅ <b style="color:var(--team-a)">${p1}, ${p2}</b> vs <b style="color:var(--team-b)">${p3}, ${p4}</b>${scoreInfo} — <span style="text-decoration:underline;cursor:pointer;color:var(--win);" onclick="applyParsedGame('${p1}','${p2}','${p3}','${p4}',${saStr},${sbStr})">적용하기</span>`;
+    preview.style.display = 'block';
+  };
+
+  window.applyParsedGame = function(a1, a2, b1, b2, sa, sb) {
+    // 선수 적용
+    selectPlayer('a1', a1);
+    selectPlayer('a2', a2);
+    selectPlayer('b1', b1);
+    selectPlayer('b2', b2);
+    // 미등록 선수 자동 추가
+    [a1,a2,b1,b2].forEach(async p => { if (p) await addNewPlayerToList(p); });
+    // 점수 적용
+    if (sa !== null && !isNaN(sa)) { scoreVals.a = sa; setScoreDisplay('a', sa); }
+    if (sb !== null && !isNaN(sb)) { scoreVals.b = sb; setScoreDisplay('b', sb); }
+    // 프리뷰 숨기기
+    const preview = document.getElementById('parse-preview');
+    if (preview) preview.style.display = 'none';
+    // 코멘트란 비우기
+    const commentEl = document.getElementById('inp-comment');
+    if (commentEl) commentEl.value = '';
+  };
   async function loadPlayers() {
     try {
       const snap = await getDoc(settingsDoc);
@@ -835,20 +952,29 @@
     return Object.entries(selected).filter(([k,v]) => k !== exceptSlot && v !== null).map(([,v]) => v);
   }
 
-  function renderSharedPicker() {
+  function renderSharedPicker(query='') {
     const slot = activePickerSlot;
     if (!slot) return;
     const used = usedPlayers(slot);
     const team = slot.startsWith('a') ? 'a' : 'b';
     const sorted = [...PLAYERS].sort((a, b) => a.localeCompare(b, 'ko'));
-    const listHTML = sorted.map(p => {
-      const isUsed = used.includes(p);
-      const isSel = selected[slot] === p;
-      return `<button class="ppbtn${isUsed?' used':''}${isSel?' sel-'+team:''}"
-        onclick="${isUsed?'void(0)':"selectPlayer('" + slot + "','" + p + "')"}">${p}</button>`;
-    }).join('');
+    const filtered = query
+      ? sorted.filter(p => p.toLowerCase().includes(query.toLowerCase()))
+      : sorted;
+    const listHTML = filtered.length
+      ? filtered.map(p => {
+          const isUsed = used.includes(p);
+          const isSel = selected[slot] === p;
+          return `<button class="ppbtn${isUsed?' used':''}${isSel?' sel-'+team:''}"
+            onclick="${isUsed?'void(0)':"selectPlayer('" + slot + "','" + p + "')"}">${p}</button>`;
+        }).join('')
+      : `<div style="text-align:center;color:var(--muted);font-size:13px;padding:8px 0;">"${query}" 검색 결과 없음</div>`;
     document.getElementById('shared-picker-list').innerHTML = listHTML;
   }
+
+  window.filterPickerList = function(q) {
+    renderSharedPicker(q);
+  };
 
   window.togglePicker = function(slot) {
     const picker = document.getElementById('shared-player-picker');
@@ -859,6 +985,8 @@
     closeAllPickers();
     activePickerSlot = slot;
     document.getElementById('shared-custom-inp').value = '';
+    const searchInp = document.getElementById('picker-search-inp');
+    if (searchInp) { searchInp.value = ''; }
     renderSharedPicker();
     picker.classList.add('open');
     bd.classList.add('open');
@@ -874,13 +1002,26 @@
     closeAllPickers();
   };
 
-  window.selectCustomPlayer = function() {
+
+  // 새 선수를 PLAYERS에 추가하고 Firebase 저장
+  async function addNewPlayerToList(name) {
+    if (!name || PLAYERS.includes(name)) return;
+    PLAYERS.push(name);
+    try {
+      await savePlayersToFirebase(PLAYERS);
+      buildPickers();
+      buildPlayerTabs();
+      buildPlayerFilterSelect();
+    } catch(e) { console.warn('선수 목록 저장 실패:', e); }
+  }
+  window.selectCustomPlayer = async function() {
     const slot = activePickerSlot;
     if (!slot) return;
     const inp = document.getElementById('shared-custom-inp');
     const name = inp.value.trim();
     if (!name) { inp.focus(); return; }
     selectPlayer(slot, name);
+    await addNewPlayerToList(name);
   };
 
   window.clearSlot = function(e, slot) {
@@ -1040,6 +1181,26 @@
     document.querySelectorAll('.ftab').forEach(t => t.classList.remove('on'));
     document.querySelector('.ftab').classList.add('on');
     renderList();
+
+    if (player) {
+      // 통계 탭에서 해당 선수 선택
+      statTab = player;
+      // 통계 섹션 열기
+      const statsBody = document.getElementById('stats-body');
+      const icon = document.getElementById('stats-toggle-icon');
+      if (statsBody && statsBody.style.display === 'none') {
+        statsBody.style.display = 'block';
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      }
+      // 탭 버튼 하이라이트 갱신
+      document.querySelectorAll('.ptab').forEach(t => {
+        t.classList.toggle('on', t.textContent.trim() === player);
+      });
+      renderStats();
+      // 통계 섹션으로 스크롤
+      const statsSection = document.querySelector('.stats-section');
+      if (statsSection) statsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   function buildPlayerFilterSelect() {
@@ -1050,17 +1211,7 @@
       sorted.map(p => `<option value="${p}">${p}</option>`).join('');
   }
 
-  // ---- Firestore ----
-  const q = query(gamesCol, orderBy("createdAt", "desc"));
-  onSnapshot(q, snapshot => {
-    games = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderStats();
-    renderList();
-    document.getElementById('loading-overlay').classList.add('hidden');
-  }, err => {
-    console.error(err);
-    document.getElementById('loading-overlay').classList.add('hidden');
-  });
+  // Firestore onSnapshot → see 앱 시작 section below
 
   function getStreak() {
     if (!games.length) return null;
@@ -1241,13 +1392,14 @@
     editClosePlayerSheet();
   };
 
-  window.editConfirmCustomPlayer = function() {
+  window.editConfirmCustomPlayer = async function() {
     const inp = document.getElementById('edit-player-custom-inp');
     const name = inp.value.trim();
     if (!name) { inp.focus(); return; }
     editSel[editActiveSlot] = name;
     editRefreshSlot(editActiveSlot);
     editClosePlayerSheet();
+    await addNewPlayerToList(name);
   };
 
   window.editClosePlayerSheet = function() {
@@ -1340,8 +1492,8 @@
 
   window.showSpecialStat = function(type) {
     // 버튼 토글
-    const btnIds = ['special-btn-partner','special-btn-winteam','special-btn-leastconcede'];
-    const typeMap = { partner:'special-btn-partner', winteam:'special-btn-winteam', leastconcede:'special-btn-leastconcede' };
+    const btnIds = ['special-btn-partner','special-btn-winteam','special-btn-leastconcede','special-btn-mostplay','special-btn-mostscore','special-btn-mostconcede'];
+    const typeMap = { partner:'special-btn-partner', winteam:'special-btn-winteam', leastconcede:'special-btn-leastconcede', mostplay:'special-btn-mostplay', mostscore:'special-btn-mostscore', mostconcede:'special-btn-mostconcede' };
     const box = document.getElementById('special-stat-box');
 
     if (activeSpecialBtn === type) {
@@ -1443,13 +1595,74 @@
             <span style="color:var(--muted);">평균 ${avg.toFixed(1)}실점</span></div>`;
         });
       }
+    } else if (type === 'mostplay') {
+      // 각 선수별 출전 경기 수
+      const playCnt = {};
+      validGames.forEach(g => {
+        [...(g.teamA||[]), ...(g.teamB||[])].forEach(p => {
+          if (p) playCnt[p] = (playCnt[p] || 0) + 1;
+        });
+      });
+      const sorted = Object.entries(playCnt).sort((a,b) => b[1]-a[1]).slice(0,5);
+      html = '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">🎮 최다 플레이 선수</div>';
+      sorted.forEach(([p, cnt], i) => {
+        const medal = ['🥇','🥈','🥉','4️⃣','5️⃣'][i];
+        html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+          <span>${medal} <span style="color:var(--accent);font-weight:600;">${p}</span></span>
+          <span style="color:var(--muted);">${cnt}경기</span></div>`;
+      });
+
+    } else if (type === 'mostscore') {
+      // 각 선수별 총 득점 (본인 팀 점수)
+      const scoreCnt = {};
+      validGames.filter(g => g.scoreA !== null && g.scoreA !== undefined).forEach(g => {
+        (g.teamA||[]).forEach(p => { if (p) scoreCnt[p] = (scoreCnt[p]||0) + g.scoreA; });
+        (g.teamB||[]).forEach(p => { if (p) scoreCnt[p] = (scoreCnt[p]||0) + g.scoreB; });
+      });
+      const sorted = Object.entries(scoreCnt).sort((a,b) => b[1]-a[1]).slice(0,5);
+      html = '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">⚡ 최다 득점 선수 (누적)</div>';
+      sorted.forEach(([p, cnt], i) => {
+        const medal = ['🥇','🥈','🥉','4️⃣','5️⃣'][i];
+        html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+          <span>${medal} <span style="color:#F5C842;font-weight:600;">${p}</span></span>
+          <span style="color:var(--muted);">${cnt}점</span></div>`;
+      });
+
+    } else if (type === 'mostconcede') {
+      // 각 선수별 총 실점 (상대 팀 점수)
+      const concedeCnt = {};
+      validGames.filter(g => g.scoreA !== null && g.scoreA !== undefined).forEach(g => {
+        (g.teamA||[]).forEach(p => { if (p) concedeCnt[p] = (concedeCnt[p]||0) + g.scoreB; });
+        (g.teamB||[]).forEach(p => { if (p) concedeCnt[p] = (concedeCnt[p]||0) + g.scoreA; });
+      });
+      const sorted = Object.entries(concedeCnt).sort((a,b) => b[1]-a[1]).slice(0,5);
+      html = '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">💥 최다 실점 선수 (누적)</div>';
+      sorted.forEach(([p, cnt], i) => {
+        const medal = ['🥇','🥈','🥉','4️⃣','5️⃣'][i];
+        html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+          <span>${medal} <span style="color:var(--lose);font-weight:600;">${p}</span></span>
+          <span style="color:var(--muted);">${cnt}점</span></div>`;
+      });
     }
 
     box.innerHTML = html;
     box.style.display = 'block';
   };
 
-  loadPlayers();
+  // 앱 시작
+  (async () => {
+    await loadPlayers();
+    const q = query(gamesCol, orderBy("createdAt", "desc"));
+    onSnapshot(q, snapshot => {
+      games = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderStats();
+      renderList();
+      document.getElementById('loading-overlay').classList.add('hidden');
+    }, err => {
+      console.error(err);
+      document.getElementById('loading-overlay').classList.add('hidden');
+    });
+  })();
 
   // ---- 시계 (season-tag 실시간) ----
   function updateClock() {
@@ -1486,9 +1699,11 @@
         ? `${g.scoreA} : ${g.scoreB}` : '- : -';
       const winner = aWon ? `팀A (${teamA})` : `팀B (${teamB})`;
       lines.push(`[${g.date || '-'}]`);
-      lines.push(`  ${g.scoreA}: ${teamA}`);
-      lines.push(`  ${g.scoreB}: ${teamB}`);
-            if (g.comment) lines.push(`  코멘트: ${g.comment}`);
+      lines.push(`  팀A: ${teamA}`);
+      lines.push(`  팀B: ${teamB}`);
+      lines.push(`  스코어: ${score}`);
+      lines.push(`  승리: ${winner}`);
+      if (g.comment) lines.push(`  코멘트: ${g.comment}`);
       lines.push('');
     });
     lines.push('-'.repeat(30));
@@ -1496,8 +1711,6 @@
     const winsA = games.filter(g => g.winner === 'a').length;
     lines.push(`총 ${total}경기 | 팀A ${winsA}승 | 팀B ${total-winsA}승`);
     const text = lines.join('\n');
-    // 클립보드 복사
-    
     // BOM 추가 → 윈도우 메모장/엑셀에서 한글 깨짐 방지
     const bom = '\uFEFF';
     const blob = new Blob([bom + text], { type: 'text/plain;charset=utf-8' });
@@ -1514,8 +1727,6 @@
     // 클립보드 추가 복사 (지원 시)
     if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
     alert('✅ 파일로 저장되었습니다!');
-
-
   };
 </script>
 </body>
