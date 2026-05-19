@@ -56,11 +56,7 @@
   /* ===== STATS SECTION ===== */
   .stats-section { margin-bottom: 1rem; }
 
-  /* 선수 탭 - wrap 그리드 (모든 선수 표시) */
-  .player-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .ptab { height: var(--touch-h); padding: 0 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: var(--fs-sm); font-weight: 500; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-  .ptab.on { background: rgba(123,110,250,0.2); border-color: var(--accent); color: var(--text); }
-  .ptab.all-tab.on { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); }
+  /* player tabs removed */
 
   /* 통계 카드 - 2x2 그리드 */
   .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -465,6 +461,17 @@
       <span id="stats-toggle-icon" style="font-size:13px;color:var(--muted);transition:transform 0.2s;">▼</span>
     </div>
     <div id="stats-body" style="display:none;">
+
+    <!-- 승점 리더보드 
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
+      🏅 승점 리더보드
+      <span style="font-weight:400;margin-left:6px;color:rgba(255,255,255,0.3);">승리+3 / 득점10↑패배+2 / 패배+1</span>
+    </div>
+    <div id="point-leaderboard" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;">
+      <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">기록이 없습니다</div>
+    </div>
+	-->
+
     <!-- 특수 통계 버튼 -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
       <button onclick="showSpecialStat('partner')"
@@ -488,72 +495,19 @@
     </div>
     <!-- 특수 통계 결과 박스 -->
     <div id="special-stat-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.875rem 1rem;margin-bottom:10px;font-size:13px;color:var(--text);line-height:1.8;"></div>
-    <!-- 선수 탭 -->
-    <div class="player-tabs" id="player-tabs"></div>
-    <!-- 통계 카드 row 1: 승패 -->
-    <div class="stats-bar">
-      <div class="stat-box">
-        <div class="stat-num total-c" id="s-total">0</div>
-        <div class="stat-lbl" id="s-total-lbl">전체 경기</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num win-c" id="s-wins">0</div>
-        <div class="stat-lbl" id="s-wins-lbl">승</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num lose-c" id="s-losses">0</div>
-        <div class="stat-lbl" id="s-losses-lbl">패</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num rate-c" id="s-rate">-%</div>
-        <div class="stat-lbl">승률</div>
-        <div class="player-rate-bar"><div class="player-rate-fill" id="s-rate-bar" style="width:0%"></div></div>
-      </div>
+
+    <!-- 숨겨진 원래 요소들 (JS 호환용) -->
+    <div style="display:none">
+      <div id="score-stats-bar"></div>
+      <div id="score-ratio-wrap"></div>
     </div>
-    <!-- 통계 카드 row 2: 득점/실점 -->
-    <div class="stats-bar score-stats-bar" id="score-stats-bar" style="margin-top:10px; display:none">
-      <div class="stat-box">
-        <div class="stat-num" id="s-scored" style="color:#F5C842">0</div>
-        <div class="stat-lbl">총 득점</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num" id="s-conceded" style="color:#A0A0C0">0</div>
-        <div class="stat-lbl">총 실점</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num" id="s-avg-scored" style="color:#F5C842">-</div>
-        <div class="stat-lbl">경기당 득점</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num" id="s-avg-conceded" style="color:#A0A0C0">-</div>
-        <div class="stat-lbl">경기당 실점</div>
-      </div>
-    </div>
-    <!-- 득점 비율 바 -->
-    <div class="ratio-bar-wrap" id="score-ratio-wrap" style="display:none; margin-top:10px;">
-      <div class="ratio-bar">
-        <div class="ratio-win" id="score-ratio-scored" style="background:#F5C842; width:0%"></div>
-        <div class="ratio-lose" id="score-ratio-conceded" style="width:0%"></div>
-      </div>
-      <div class="ratio-labels">
-        <span id="score-ratio-left" style="color:#F5C842">득점 0%</span>
-        <span></span>
-        <span id="score-ratio-right" style="color:#A0A0C0">실점 0%</span>
-      </div>
-    </div>
-    <!-- 전체 승패 비율 바 (전체 탭일 때만) -->
-    <div class="ratio-bar-wrap" id="ratio-wrap" style="display:none; margin-top:10px;">
-      <div class="ratio-bar">
-        <div class="ratio-win" id="ratio-win" style="width:0%"></div>
-        <div class="ratio-lose" id="ratio-lose" style="width:0%"></div>
-      </div>
-      <div class="ratio-labels">
-        <span id="ratio-left">팀A 0%</span>
-        <span id="streak-info"></span>
-        <span id="ratio-right">팀B 0%</span>
-      </div>
-    </div>
+
     </div><!-- /stats-body -->
+  </div>
+
+  <!-- 선수 선택 시 개인 기록 박스 -->
+  <div id="player-stat-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0.875rem 1rem;margin-bottom:0.75rem;">
+    <div id="player-stat-content"></div>
   </div>
 
   <div class="records-card">
@@ -633,7 +587,7 @@
   let picked = null;
   let games = [];
   let filter = 'all';
-  let statTab = ''; // empty → buildPlayerTabs sets random
+
 
   // ---- Firebase: 선수 목록 ----
 
@@ -755,7 +709,6 @@
     buildPickers();
   buildScorePickers();
   buildPlayerFilterSelect();
-    buildPlayerTabs();
   }
 
   async function savePlayersToFirebase(list) {
@@ -773,106 +726,89 @@
   }
 
   // ---- 선수 탭 빌드 ----
-  function buildPlayerTabs() {
-    const wrap = document.getElementById('player-tabs');
-    // statTab이 비어있거나 PLAYERS에 없으면 랜덤 초기화
-    if (PLAYERS.length > 0 && !PLAYERS.includes(statTab)) {
-      statTab = PLAYERS[Math.floor(Math.random() * PLAYERS.length)];
-    }
-    const sortedForTabs = [...PLAYERS].sort((a, b) => a.localeCompare(b, 'ko'));
-    const playerBtns = sortedForTabs.map(p =>
-      `<button class="ptab ${statTab===p?'on':''}" onclick="setStatTab('${p}',this)">${p}</button>`
-    ).join('');
-    wrap.innerHTML = playerBtns;
-  }
-
-  window.setStatTab = function(tab, el) {
-    statTab = tab;
-    document.querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
-    el.classList.add('on');
-    renderStats();
-  };
+  // player tabs removed
 
   // ---- 통계 렌더 ----
+  // 개인 기록 계산 함수 (경기기록 탭 선수 선택 시에도 재사용)
+  function calcPlayerStats(p) {
+    const playerGames = games.filter(g =>
+      (g.teamA||[]).includes(p) || (g.teamB||[]).includes(p)
+    );
+    const wins = playerGames.filter(g =>
+      (g.winner==='a' && (g.teamA||[]).includes(p)) ||
+      (g.winner==='b' && (g.teamB||[]).includes(p))
+    ).length;
+    const losses = playerGames.length - wins;
+    const rate = playerGames.length ? Math.round(wins/playerGames.length*100) : null;
+    const sg = playerGames.filter(g => g.scoreA !== null && g.scoreA !== undefined);
+    const scored = sg.reduce((s,g) => s + ((g.teamA||[]).includes(p) ? g.scoreA : g.scoreB), 0);
+    const conceded = sg.reduce((s,g) => s + ((g.teamA||[]).includes(p) ? g.scoreB : g.scoreA), 0);
+    return { total: playerGames.length, wins, losses, rate, scored, conceded, sgLen: sg.length };
+  }
+
+  // 승점 계산: 승리+3, 득점10이상 후 패배+2, 패배+1
+  function calcPointsLeaderboard() {
+    const pts = {};  // player → points
+    games.forEach(g => {
+      const teamA = g.teamA || [];
+      const teamB = g.teamB || [];
+      const allPlayers = [...teamA, ...teamB];
+      allPlayers.forEach(p => { if (p && !(p in pts)) pts[p] = 0; });
+
+      const aWon = g.winner === 'a';
+      const winners = aWon ? teamA : teamB;
+      const losers  = aWon ? teamB : teamA;
+      const loserScore = aWon
+        ? (g.scoreB !== null && g.scoreB !== undefined ? g.scoreB : null)
+        : (g.scoreA !== null && g.scoreA !== undefined ? g.scoreA : null);
+
+      winners.forEach(p => { if (p) pts[p] = (pts[p]||0) + 3; });
+      losers.forEach(p => {
+        if (!p) return;
+        if (loserScore !== null && loserScore >= 10) {
+          pts[p] = (pts[p]||0) + 2;
+        } else {
+          pts[p] = (pts[p]||0) + 1;
+        }
+      });
+    });
+    return Object.entries(pts)
+      .filter(([,v]) => v > 0)
+      .sort((a,b) => b[1]-a[1]);
+  }
+
+  function renderPointsLeaderboard() {
+    const lb = document.getElementById('point-leaderboard');
+    if (!lb) return;
+    const ranked = calcPointsLeaderboard();
+    if (!ranked.length) {
+      lb.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">기록이 없습니다</div>';
+      return;
+    }
+    const medals = ['🥇','🥈','🥉'];
+    const maxPts = ranked[0][1];
+    lb.innerHTML = ranked.map(([player, pts], i) => {
+      const medal = medals[i] || `<span style="font-size:12px;color:var(--muted);min-width:24px;display:inline-block;text-align:center;">${i+1}</span>`;
+      const pct = Math.round(pts / maxPts * 100);
+      const isTop = i === 0;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:${isTop?'rgba(123,110,250,0.06)':'transparent'}">
+        <span style="font-size:${i<3?'18px':'14px'};min-width:28px;text-align:center;">${medal}</span>
+        <div style="flex:1;">
+          <div style="font-size:var(--fs-sm);font-weight:${isTop?'700':'500'};color:${isTop?'var(--text)':'var(--text)'};">${player}</div>
+          <div style="height:4px;background:var(--surface2);border-radius:2px;margin-top:4px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${isTop?'linear-gradient(90deg,var(--accent),#B06EFA)':'var(--accent)'};border-radius:2px;transition:width 0.5s;opacity:${0.4+pct/100*0.6};"></div>
+          </div>
+        </div>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${isTop?'var(--accent)':'var(--text)'};min-width:36px;text-align:right;">${pts}</span>
+        <span style="font-size:10px;color:var(--muted);">점</span>
+      </div>`;
+    }).join('');
+  }
+
   function renderStats() {
     const now = new Date();
     document.getElementById('season-tag').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월`;
-
-    if (statTab === 'all') {
-      // 전체 통계 (팀A vs 팀B)
-      const winsA = games.filter(g => g.winner === 'a').length;
-      const winsB = games.filter(g => g.winner === 'b').length;
-      const total = games.length;
-      document.getElementById('s-total').textContent = total;
-      document.getElementById('s-total-lbl').textContent = '전체 경기';
-      document.getElementById('s-wins').textContent = winsA;
-      document.getElementById('s-wins-lbl').textContent = '팀A 승';
-      document.getElementById('s-losses').textContent = winsB;
-      document.getElementById('s-losses-lbl').textContent = '팀B 승';
-      const rate = total ? Math.round(winsA / total * 100) : null;
-      document.getElementById('s-rate').textContent = rate !== null ? rate + '%' : '-%';
-      document.getElementById('s-rate-bar').style.width = (rate || 0) + '%';
-
-      // 전체 득점/실점 (팀A 기준)
-      const scoredGames = games.filter(g => g.scoreA !== null && g.scoreA !== undefined);
-      const totalScored = scoredGames.reduce((s,g) => s + (g.winner==='a' ? g.scoreA : g.scoreB), 0);
-      const totalConceded = scoredGames.reduce((s,g) => s + (g.winner==='a' ? g.scoreB : g.scoreA), 0);
-      renderScoreStats(totalScored, totalConceded, scoredGames.length, '팀A 득점', '팀A 실점');
-
-      // 승패 비율 바
-      const wrap = document.getElementById('ratio-wrap');
-      if (total > 0) {
-        wrap.style.display = 'block';
-        const ap = Math.round(winsA/total*100);
-        const bp = Math.round(winsB/total*100);
-        document.getElementById('ratio-win').style.width = ap + '%';
-        document.getElementById('ratio-lose').style.width = bp + '%';
-        document.getElementById('ratio-left').textContent = `팀A ${ap}%`;
-        document.getElementById('ratio-right').textContent = `팀B ${bp}%`;
-        const streak = getStreak();
-        if (streak && streak.count >= 2) {
-          const cls = streak.winner === 'a' ? 'streak-win' : 'streak-lose';
-          const label = streak.winner === 'a' ? '🔥 팀A 연승' : '🔥 팀B 연승';
-          document.getElementById('streak-info').innerHTML = `<span class="streak-badge ${cls}">${label} ${streak.count}</span>`;
-        } else { document.getElementById('streak-info').innerHTML = ''; }
-      } else { wrap.style.display = 'none'; }
-
-    } else {
-      // 특정 선수 통계
-      const p = statTab;
-      const playerGames = games.filter(g =>
-        (g.teamA || []).includes(p) || (g.teamB || []).includes(p)
-      );
-      const wins = playerGames.filter(g =>
-        (g.winner === 'a' && (g.teamA||[]).includes(p)) ||
-        (g.winner === 'b' && (g.teamB||[]).includes(p))
-      ).length;
-      const losses = playerGames.length - wins;
-      const rate = playerGames.length ? Math.round(wins / playerGames.length * 100) : null;
-
-      document.getElementById('s-total').textContent = playerGames.length;
-      document.getElementById('s-total-lbl').textContent = `${p} 출전`;
-      document.getElementById('s-wins').textContent = wins;
-      document.getElementById('s-wins-lbl').textContent = `${p} 승`;
-      document.getElementById('s-losses').textContent = losses;
-      document.getElementById('s-losses-lbl').textContent = `${p} 패`;
-      document.getElementById('s-rate').textContent = rate !== null ? rate + '%' : '-%';
-      document.getElementById('s-rate-bar').style.width = (rate || 0) + '%';
-
-      // 선수 득점/실점 (해당 선수가 속한 팀 기준)
-      const sg = playerGames.filter(g => g.scoreA !== null && g.scoreA !== undefined);
-      const pScored = sg.reduce((s,g) => {
-        const onA = (g.teamA||[]).includes(p);
-        return s + (onA ? g.scoreA : g.scoreB);
-      }, 0);
-      const pConceded = sg.reduce((s,g) => {
-        const onA = (g.teamA||[]).includes(p);
-        return s + (onA ? g.scoreB : g.scoreA);
-      }, 0);
-      renderScoreStats(pScored, pConceded, sg.length, `${p} 득점`, `${p} 실점`);
-
-      document.getElementById('ratio-wrap').style.display = 'none';
-    }
+    renderPointsLeaderboard();
   }
 
   function renderScoreStats(scored, conceded, gamesWithScore, scoredLbl, concededLbl) {
@@ -945,13 +881,12 @@
     try {
       await savePlayersToFirebase(cleaned);
       PLAYERS = cleaned;
-      if (!PLAYERS.includes(statTab)) statTab = PLAYERS[0] || 'all';
+
       ['a1','a2','b1','b2'].forEach(s => {
         if (selected[s] && !PLAYERS.includes(selected[s])) clearSlot({ stopPropagation:()=>{} }, s);
       });
       buildPickers();
-      buildPlayerTabs();
-      buildPlayerFilterSelect();
+        buildPlayerFilterSelect();
       renderStats();
       closeModal();
     } catch(e) { alert('저장 실패: ' + e.message); }
@@ -1027,8 +962,7 @@
     try {
       await savePlayersToFirebase(PLAYERS);
       buildPickers();
-      buildPlayerTabs();
-      buildPlayerFilterSelect();
+        buildPlayerFilterSelect();
     } catch(e) { console.warn('선수 목록 저장 실패:', e); }
   }
   window.selectCustomPlayer = async function() {
@@ -1199,24 +1133,35 @@
     document.querySelector('.ftab').classList.add('on');
     renderList();
 
+    const box = document.getElementById('player-stat-box');
+    const boxContent = document.getElementById('player-stat-content');
+
     if (player) {
-      // 통계 탭에서 해당 선수 선택
-      statTab = player;
-      // 통계 섹션 열기
-      const statsBody = document.getElementById('stats-body');
-      const icon = document.getElementById('stats-toggle-icon');
-      if (statsBody && statsBody.style.display === 'none') {
-        statsBody.style.display = 'block';
-        if (icon) icon.style.transform = 'rotate(180deg)';
-      }
-      // 탭 버튼 하이라이트 갱신
-      document.querySelectorAll('.ptab').forEach(t => {
-        t.classList.toggle('on', t.textContent.trim() === player);
-      });
-      renderStats();
-      // 통계 섹션으로 스크롤
-      const statsSection = document.querySelector('.stats-section');
-      if (statsSection) statsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // 개인 기록 계산
+      const st = calcPlayerStats(player);
+      const scoreInfo = st.sgLen > 0
+        ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <span style="background:rgba(245,200,66,0.12);color:#F5C842;border-radius:20px;padding:3px 10px;font-size:var(--fs-xs);">득점 ${st.scored} (평균 ${(st.scored/st.sgLen).toFixed(1)})</span>
+            <span style="background:rgba(160,160,192,0.12);color:#A0A0C0;border-radius:20px;padding:3px 10px;font-size:var(--fs-xs);">실점 ${st.conceded} (평균 ${(st.conceded/st.sgLen).toFixed(1)})</span>
+          </div>`
+        : '';
+      const rateColor = st.rate >= 60 ? 'var(--win)' : st.rate >= 40 ? 'var(--accent)' : 'var(--lose)';
+      boxContent.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:var(--fs-md);font-weight:700;color:var(--text);">👤 ${player}</span>
+          <span style="font-size:var(--fs-xs);color:var(--muted);">${st.total}경기</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:var(--fs-sm);color:var(--win);">승 ${st.wins}</span>
+          <span style="color:var(--border);">|</span>
+          <span style="font-size:var(--fs-sm);color:var(--lose);">패 ${st.losses}</span>
+          <span style="color:var(--border);">|</span>
+          <span style="font-size:var(--fs-sm);color:${rateColor};font-weight:700;">${st.rate !== null ? st.rate+'%' : '-%'}</span>
+        </div>
+        ${scoreInfo}`;
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
     }
   };
 
