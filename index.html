@@ -439,7 +439,7 @@
       </div>
     </div>
     <div style="margin-bottom:8px;">
-      <textarea id="inp-comment" placeholder="경기 코멘트" maxlength="200" rows="2"
+      <textarea id="inp-comment" placeholder="경기 코멘트 또는 선수 정보 붙여넣기&#10;예: a, b vs c, d  또는  a b c d" maxlength="200" rows="2"
         style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
                color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;
                padding:8px 10px;outline:none;resize:none;line-height:1.5;
@@ -462,18 +462,11 @@
     </div>
     <div id="stats-body" style="display:none;">
 
-    <!-- 승점 리더보드 
-    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
-      🏅 승점 리더보드
-      <span style="font-weight:400;margin-left:6px;color:rgba(255,255,255,0.3);">승리+3 / 득점10↑패배+2 / 패배+1</span>
-    </div>
-    <div id="point-leaderboard" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;">
-      <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">기록이 없습니다</div>
-    </div>
-	-->
-
     <!-- 특수 통계 버튼 -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <button onclick="showSpecialStat('leaderboard')"
+        style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
+        id="special-btn-leaderboard">🏅 승점 리더보드</button>
       <button onclick="showSpecialStat('partner')"
         style="height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;"
         id="special-btn-partner">🤝 최다 파트너</button>
@@ -777,38 +770,15 @@
       .sort((a,b) => b[1]-a[1]);
   }
 
-  function renderPointsLeaderboard() {
-    const lb = document.getElementById('point-leaderboard');
-    if (!lb) return;
-    const ranked = calcPointsLeaderboard();
-    if (!ranked.length) {
-      lb.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">기록이 없습니다</div>';
-      return;
-    }
-    const medals = ['🥇','🥈','🥉'];
-    const maxPts = ranked[0][1];
-    lb.innerHTML = ranked.map(([player, pts], i) => {
-      const medal = medals[i] || `<span style="font-size:12px;color:var(--muted);min-width:24px;display:inline-block;text-align:center;">${i+1}</span>`;
-      const pct = Math.round(pts / maxPts * 100);
-      const isTop = i === 0;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:${isTop?'rgba(123,110,250,0.06)':'transparent'}">
-        <span style="font-size:${i<3?'18px':'14px'};min-width:28px;text-align:center;">${medal}</span>
-        <div style="flex:1;">
-          <div style="font-size:var(--fs-sm);font-weight:${isTop?'700':'500'};color:${isTop?'var(--text)':'var(--text)'};">${player}</div>
-          <div style="height:4px;background:var(--surface2);border-radius:2px;margin-top:4px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:${isTop?'linear-gradient(90deg,var(--accent),#B06EFA)':'var(--accent)'};border-radius:2px;transition:width 0.5s;opacity:${0.4+pct/100*0.6};"></div>
-          </div>
-        </div>
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${isTop?'var(--accent)':'var(--text)'};min-width:36px;text-align:right;">${pts}</span>
-        <span style="font-size:10px;color:var(--muted);">점</span>
-      </div>`;
-    }).join('');
-  }
-
   function renderStats() {
     const now = new Date();
     document.getElementById('season-tag').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월`;
-    renderPointsLeaderboard();
+    // 승점 리더보드가 열려있으면 갱신
+    if (activeSpecialBtn === 'leaderboard') {
+      const box = document.getElementById('special-stat-box');
+      const el = document.getElementById('special-btn-leaderboard');
+      if (el) showSpecialStat('leaderboard');
+    }
   }
 
   function renderScoreStats(scored, conceded, gamesWithScore, scoredLbl, concededLbl) {
@@ -1454,8 +1424,8 @@
 
   window.showSpecialStat = function(type) {
     // 버튼 토글
-    const btnIds = ['special-btn-partner','special-btn-winteam','special-btn-leastconcede','special-btn-mostplay','special-btn-mostscore','special-btn-mostconcede'];
-    const typeMap = { partner:'special-btn-partner', winteam:'special-btn-winteam', leastconcede:'special-btn-leastconcede', mostplay:'special-btn-mostplay', mostscore:'special-btn-mostscore', mostconcede:'special-btn-mostconcede' };
+    const btnIds = ['special-btn-leaderboard','special-btn-partner','special-btn-winteam','special-btn-leastconcede','special-btn-mostplay','special-btn-mostscore','special-btn-mostconcede'];
+    const typeMap = { leaderboard:'special-btn-leaderboard', partner:'special-btn-partner', winteam:'special-btn-winteam', leastconcede:'special-btn-leastconcede', mostplay:'special-btn-mostplay', mostscore:'special-btn-mostscore', mostconcede:'special-btn-mostconcede' };
     const box = document.getElementById('special-stat-box');
 
     if (activeSpecialBtn === type) {
@@ -1557,6 +1527,32 @@
             <span style="color:var(--muted);">평균 ${avg.toFixed(1)}실점</span></div>`;
         });
       }
+    } else if (type === 'leaderboard') {
+      const ranked = calcPointsLeaderboard();
+      html = '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">🏅 승점 리더보드 &nbsp;<span style=\'font-weight:400;color:rgba(255,255,255,0.3);\'>승리+3 / 10점↑패배+2 / 패배+1</span></div>';
+      if (!ranked.length) {
+        html += '<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px 0;">기록이 없습니다</div>';
+      } else {
+        const medals = ['🥇','🥈','🥉'];
+        const maxPts = ranked[0][1];
+        html += ranked.map(([player, pts], i) => {
+          const medal = i < 3 ? medals[i] : `<span style="font-size:12px;color:var(--muted);min-width:24px;display:inline-block;text-align:center;">${i+1}</span>`;
+          const pct = Math.round(pts / maxPts * 100);
+          const isTop = i === 0;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:${i<3?'18px':'13px'};min-width:26px;text-align:center;">${medal}</span>
+            <div style="flex:1;">
+              <div style="font-size:var(--fs-sm);font-weight:${isTop?'700':'500'};color:var(--text);">${player}</div>
+              <div style="height:4px;background:var(--surface2);border-radius:2px;margin-top:4px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:${isTop?'linear-gradient(90deg,var(--accent),#B06EFA)':'var(--accent)'};border-radius:2px;opacity:${(0.4+pct/100*0.6).toFixed(2)};"></div>
+              </div>
+            </div>
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${isTop?'var(--accent)':'var(--text)'};">${pts}</span>
+            <span style="font-size:10px;color:var(--muted);">점</span>
+          </div>`;
+        }).join('');
+      }
+
     } else if (type === 'mostplay') {
       // 각 선수별 출전 경기 수
       const playCnt = {};
